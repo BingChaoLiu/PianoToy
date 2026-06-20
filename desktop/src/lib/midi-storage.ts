@@ -50,3 +50,35 @@ export async function deleteMidi(id: string): Promise<void> {
     tx.onerror = () => reject(tx.error);
   });
 }
+
+/** Return all stored (id, bytes) pairs — used by the one-time migration. */
+export async function loadAllMidi(): Promise<{ id: string; bytes: Uint8Array }[]> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("midi", "readonly");
+    const store = tx.objectStore("midi");
+    const out: { id: string; bytes: Uint8Array }[] = [];
+    const req = store.openCursor();
+    req.onsuccess = () => {
+      const cur = req.result;
+      if (cur) {
+        out.push({ id: cur.key as string, bytes: cur.value as Uint8Array });
+        cur.continue();
+      } else {
+        resolve(out);
+      }
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+/** Remove all stored MIDI bytes — called after a successful migration. */
+export async function clearAllMidi(): Promise<void> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("midi", "readwrite");
+    tx.objectStore("midi").clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
