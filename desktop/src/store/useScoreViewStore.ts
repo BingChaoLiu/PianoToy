@@ -1,9 +1,9 @@
-// Score view mode: waterfall (falling notes) vs staff (sheet music scroll).
+// Score view mode: waterfall (falling notes) vs staff (sheet music scroll) vs pdf.
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type ScoreViewMode = "waterfall" | "staff";
+export type ScoreViewMode = "waterfall" | "staff" | "pdf";
 
 interface ScoreViewState {
   mode: ScoreViewMode;
