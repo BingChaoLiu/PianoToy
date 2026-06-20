@@ -1,9 +1,13 @@
 // Tauri command wrappers for the scores filesystem.
-// All path construction goes through here so folder-name validation is enforced
-// as defense-in-depth (Rust also validates via validate_folder_name/safe_join).
+// All folder-name arguments go through assertFolder (isValidFolderName) here,
+// which is the ONLY guard for read/write paths — the Rust save_midi_bytes /
+// read_midi_bytes commands accept an arbitrary absolute path and do NOT re-run
+// validate_folder_name/safe_join. (delete_score_folder does validate on the
+// Rust side too, but read/write do not.)
 
 import { invoke } from "@tauri-apps/api/core";
 import { isValidFolderName } from "./slug";
+import { isNative } from "./env";
 import {
   MIDI_FILENAME,
   PDF_FILENAME,
@@ -11,9 +15,9 @@ import {
   type ScoreMeta,
 } from "./types";
 
-export function isNative(): boolean {
-  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-}
+// Re-exported so existing `import { isNative } from "./native"` callers keep
+// working; the real (Tauri-free) implementation lives in ./env.
+export { isNative };
 
 function assertFolder(folder: string): void {
   if (!isValidFolderName(folder)) {
