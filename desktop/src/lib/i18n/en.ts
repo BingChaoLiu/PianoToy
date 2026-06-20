@@ -182,6 +182,7 @@ const lang: Translation = {
   view_mode: {
     waterfall: "Waterfall",
     staff: "Staff",
+    pdf: "PDF Score",
   },
   score_delete: {
     confirm: "Delete this score?",
@@ -192,6 +193,29 @@ const lang: Translation = {
     label: "Listen Only",
     active: "Playing original audio",
     disabled_tip: "Pause first to toggle original audio",
+  },
+  import_dialog: {
+    title: "Import Score",
+    midi_zone: "MIDI File",
+    midi_zone_hint: "Drop or click to select .mid / .midi (required)",
+    pdf_zone: "PDF Score (optional)",
+    pdf_zone_hint: "Drop or click to select .pdf",
+    pdf_optional: "optional",
+    name_label: "Name",
+    cancel: "Cancel",
+    confirm: "Import",
+    drop_here: "Drop to import",
+    release_to_drop: "Release to import",
+    file_too_large: "File too large",
+    midi_required: "Please select a MIDI file",
+    pdf_required: "Please select a PDF file",
+  },
+  pdf_view: {
+    edit_anchors: "Edit Anchors",
+    add_anchor_here: "Add anchor here",
+    use_current_time: "Use current playback time",
+    no_pdf: "This score has no PDF",
+    loading: "Loading…",
   },
 };
 
