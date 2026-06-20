@@ -9,9 +9,10 @@ import { useSongStore } from "@/store/useSongStore";
 import { useT } from "@/lib/i18n";
 import { SCORE_CATALOG, CATEGORIES, DIFFICULTIES } from "@/lib/songs/catalog";
 import { parseSmf } from "@/lib/smf-parser";
-import { saveMidi, loadMidi, deleteMidi } from "@/lib/midi-storage";
+import { loadMidi, deleteMidi } from "@/lib/midi-storage";
+import { importScore, loadScoreMidi, deleteScore } from "@/lib/score-storage";
+import { ImportDialog, type ImportDialogResult } from "@/components/ImportDialog";
 import { toast } from "sonner";
-import type { ScoreDifficulty } from "@/store/useScoreLibraryStore";
 
 
 interface Props {
@@ -22,12 +23,13 @@ export function ScoreLibraryPage({ onSongSelected }: Props) {
   const t = useT();
   const setMode = useAppModeStore((s) => s.setMode);
   const loadSong = useSongStore((s) => s.loadSong);
-  const { customScores, addCustomScore } = useScoreLibraryStore();
+  const customScores = useScoreLibraryStore((s) => s.customScores);
   const removeCustomScore = useScoreLibraryStore((s) => s.removeCustomScore);
 
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [diffFilter, setDiffFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
 
   const allScores = useMemo(() => {
     return [...SCORE_CATALOG, ...customScores];
@@ -63,9 +65,10 @@ export function ScoreLibraryPage({ onSongSelected }: Props) {
         return;
       }
     } else {
-      // Custom imported MIDI: load raw bytes from storage and parse
+      // Custom imported MIDI: prefer file-system storage, fall back to legacy IDB.
       try {
-        const bytes = await loadMidi(entry.id);
+        let bytes = await loadScoreMidi(entry.id);
+        if (!bytes) bytes = await loadMidi(entry.id);
         if (!bytes) {
           toast.error(t("toast.load_failed", { msg: "file not found" }));
           return;
@@ -85,49 +88,40 @@ export function ScoreLibraryPage({ onSongSelected }: Props) {
     }
   };
 
-  const handleImport = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".mid,.midi";
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      try {
-        const ab = await file.arrayBuffer();
-        const bytes = new Uint8Array(ab);
-        const song = parseSmf(bytes);
-        const entry = {
-          id: "custom-" + Date.now(),
-          name: file.name.replace(/\.(mid|midi)$/i, ""),
-          composer: t("score.custom"),
-          difficulty: "medium" as ScoreDifficulty,
-          duration: Math.round(song.duration),
-          category: "custom",
-          build: null as never,
-          filePath: null,
-        };
-        // Save raw MIDI bytes to unified storage (Tauri disk / IndexedDB)
-        await saveMidi(entry.id, bytes);
-        addCustomScore(entry);
-        song.name = entry.name;
-        loadSong(song);
-        if (onSongSelected) {
-          onSongSelected();
-        }
-        toast.success(t("toast.loaded", { name: entry.name, n: song.notes.length }));
-      } catch (err) {
-        toast.error(t("toast.load_failed", { msg: String(err) }));
-      }
-    };
-    input.click();
+  const handleImport = () => setImportOpen(true);
+
+  const handleImportConfirm = async (r: ImportDialogResult) => {
+    const song = parseSmf(r.midiBytes);
+    const meta = await importScore({
+      midiBytes: r.midiBytes,
+      pdfBytes: r.pdfBytes,
+      name: r.name,
+      composer: t("score.custom"),
+      difficulty: "medium",
+      duration: Math.round(song.duration),
+      noteCount: song.notes.length,
+      tempo: 120,
+      timeSignature: "4/4",
+    });
+    await useScoreLibraryStore.getState().rescan();
+    song.name = meta.name;
+    loadSong(song);
+    if (onSongSelected) onSongSelected();
+    toast.success(t("toast.loaded", { name: meta.name, n: song.notes.length }));
   };
 
-  const handleDelete = (entry: ScoreEntry) => {
+  const handleDelete = async (entry: ScoreEntry) => {
     if (!confirm(t("score_delete.confirm"))) return;
-    // Remove from store
     removeCustomScore(entry.id);
-    // Optionally delete the file from disk (best-effort, non-fatal)
-    deleteMidi(entry.id).catch(() => {});
+    // Delete from the file system if present; always best-effort clean the
+    // legacy IDB too (the two stores are independent and non-overlapping, so
+    // cleaning both is safe and avoids orphaned legacy blobs).
+    try {
+      await deleteScore(entry.id);
+    } catch {
+      // folder doesn't exist on disk (legacy-only entry) — that's fine
+    }
+    await deleteMidi(entry.id).catch(() => {});
     toast.success(t("score_delete.delete"));
   };
 
@@ -239,6 +233,12 @@ export function ScoreLibraryPage({ onSongSelected }: Props) {
           <div className="py-12 text-center text-sm text-muted">{t("score.no_results")}</div>
         )}
       </div>
+
+      <ImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onConfirm={handleImportConfirm}
+      />
     </div>
   );
 }

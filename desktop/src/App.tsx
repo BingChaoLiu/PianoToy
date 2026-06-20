@@ -33,6 +33,8 @@ import { useFreePlayStore } from "@/store/useFreePlayStore";
 import { useScorePracticeStore, type ScorePracticeMode } from "@/store/useScorePracticeStore";
 import { useScoreViewStore } from "@/store/useScoreViewStore";
 import { usePlaybackModeStore } from "@/store/usePlaybackModeStore";
+import { useScoreLibraryStore } from "@/store/useScoreLibraryStore";
+import { migrateIndexedDbToFs } from "@/lib/score-storage/migration";
 import { stopAllSynthVoices } from "@/lib/synth";
 import { resetScheduledFlags } from "@/lib/playback-scheduler";
 import { parseSmf } from "@/lib/smf-parser";
@@ -83,6 +85,21 @@ export function App() {
   const listenOnly = usePlaybackModeStore((s) => s.listenOnly);
   const setListenOnly = usePlaybackModeStore((s) => s.setListenOnly);
   const isRhythmMode = mode === "random-practice" || (mode === "score-practice" && scoreMode === "challenge");
+
+  // One-time migration (IndexedDB → filesystem) + score library scan on mount.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        await migrateIndexedDbToFs();
+      } catch (err) {
+        console.error("[startup] migration failed", err);
+      }
+      if (cancelled) return;
+      await useScoreLibraryStore.getState().rescan();
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // --- Mode entry effects ---
   useEffect(() => {
