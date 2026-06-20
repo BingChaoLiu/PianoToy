@@ -27,15 +27,25 @@ fn get_scores_root(app: tauri::AppHandle) -> Result<String, String> {
     Ok(root.to_string_lossy().into_owned())
 }
 
+/// Windows reserved folder names (case-insensitive). We refuse them so the
+/// directory can actually be created on Windows.
+const WINDOWS_RESERVED: &[&str] = &[
+    "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6",
+    "com7", "com8", "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6",
+    "lpt7", "lpt8", "lpt9",
+];
+
 /// Validate that a folder name is a safe single path segment.
-/// Rejects `..`, absolute paths, separators, and anything outside [A-Za-z0-9_-].
+/// Rejects `..`, absolute paths, separators, Windows reserved names, and any
+/// character that is not alphanumeric (unicode-aware) / dash / underscore.
 fn validate_folder_name(folder: &str) -> Result<(), String> {
     if folder.is_empty()
         || folder.starts_with('.')
         || folder.contains(std::path::MAIN_SEPARATOR)
+        || WINDOWS_RESERVED.iter().any(|r| r.eq_ignore_ascii_case(folder))
         || !folder
             .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+            .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
     {
         return Err(format!("invalid folder name: {}", folder));
     }
