@@ -1,0 +1,116 @@
+import type { Translation } from "./types";
+
+const lang: Translation = {
+  app: { title: "Visualiseur Piano MIDI", phase_label: "Phase 11 \u00b7 MIDI Natif" },
+  toast: { loaded: "Charg\u00e9 {name} ({n} notes)", load_failed: "\u00c9chec du chargement : {msg}" },
+  header: {
+    select_demo: "Choisir d\u00e9mo", load_mid: "Charger .mid", recording: "Enreg.", stop: "Arr\u00eater",
+    start_recording_tip: "D\u00e9marrer l\u2019enregistrement", stop_recording_tip: "Arr\u00eater l\u2019enregistrement",
+    replay_tip: "Rejouer", save_midi_tip: "Sauvegarder MIDI", sight_reading_tip: "Lecture \u00e0 vue",
+    practice_tip: "Mode pratique", settings_tip: "Param\u00e8tres",
+  },
+  drop: { title: "D\u00e9poser un fichier .mid", hint: "Rel\u00e2cher pour charger" },
+  sight: {
+    title: "Lecture \u00e0 vue", close: "Fermer", key: "Tonalit\u00e9", octave: "Octave de d\u00e9part",
+    octave_short_low: "basse", octave_short_high: "haute", difficulty: "Difficult\u00e9",
+    bars: "Mesures", bpm: "BPM ({bpm})", seed_label: "seed : {seed}",
+    generate: "Nouvel exercice", redo: "Refaire", redo_tip: "Reg\u00e9n\u00e9rer avec le seed pr\u00e9c\u00e9dent",
+  },
+  settings: {
+    title: "Param\u00e8tres", close: "Fermer", language: "Langue", show_labels: "Noms de notes",
+    color_mode: "Mode couleur", color_split: "S\u00e9par\u00e9", color_track: "Par piste",
+    color_none: "Aucun", synth_enabled: "Synth\u00e9 actif",
+    time_window: "Fen\u00eatre temporelle {n}s", hit_window: "Fen\u00eatre de touche \u00b1{n}ms",
+    octave: "Octave (Z/X ajuster) {n}", octave_hint: "ajuster", tone: "Timbre",
+    additive: "Synth\u00e8se additive", load_samples: "Charger \u00e9chantillons (~{mb}Mo)",
+    loading: "Chargement {loaded}/{total}", ready: "Pr\u00eat", unload: "D\u00e9charger",
+    load_failed: "\u00c9chec du chargement : {msg}",
+    sf_hint: "Splendid Grand t\u00e9l\u00e9charge les \u00e9chantillons au premier usage, puis les met en cache.",
+    midi_devices: "P\u00e9riph\u00e9riques MIDI", rescan_tip: "Rescanner MIDI",
+    no_backend: "Aucun backend MIDI. Utilisez l\u2019application bureau ou Chrome/Edge.",
+    no_input: "Aucune entr\u00e9e MIDI d\u00e9tect\u00e9e. Branchez et actualisez.",
+    native: "Natif", web: "Web",
+  },
+  song: { notes_count: "{n} notes", unload_tip: "D\u00e9charger" },
+  stats: {
+    title: "Statistiques", reset_tip: "R\u00e9initialiser", hits: "Touch\u00e9s", missed: "Manqu\u00e9s",
+    wrong: "Fausses notes", accuracy: "Pr\u00e9cision", avg_timing: "Timing moyen {ms}ms", no_data: "Pas de donn\u00e9es",
+  },
+  transport: {
+    play_tip: "Lire", pause_tip: "Pause", tempo: "Tempo", loop_tip: "Boucle",
+    clear_ab_tip: "Effacer boucle AB", unload: "D\u00e9charger",
+  },
+  error: { title: "Une erreur est survenue", retry: "R\u00e9essayer" },
+  difficulties: {
+    beginner: "D\u00e9butant : gamme, noires",
+    intermediate: "Interm\u00e9diaire : croches et accords",
+    advanced: "Avanc\u00e9 : doubles croches et sauts",
+  },
+  home: {
+    app_title: "Pratique Piano", app_subtitle: "Profitez de chaque instant musical",
+    rank: "Rang", total_points: "Points totaux", next_rank: "Rang suivant",
+    free_title: "Jeu Libre", free_desc: "Jouez librement avec entr\u00e9e MIDI, enregistrement et fichiers",
+    free_diff: "Tous niveaux",
+    random_title: "Pratique Al\u00e9atoire", random_desc: "Exercices de lecture \u00e0 vue avec difficult\u00e9 progressive",
+    random_diff: "Adaptatif",
+    score_title: "Pratique Partitions", score_desc: "Choisissez des classiques pour la lecture \u00e0 vue",
+    score_diff: "Par niveaux",
+    footer: "Piano Practice \u00b7 Illuminez chaque jour avec la musique",
+  },
+  free: {
+    summary_title: "R\u00e9sum\u00e9 de session", duration: "Dur\u00e9e", key_presses: "Touches",
+    note_range: "Ambitus", continue: "Continuer", back_home: "Retour \u00e0 l\u2019accueil",
+  },
+  score: {
+    title: "Biblioth\u00e8que de partitions", search: "Rechercher\u2026", import: "Importer MIDI",
+    no_results: "Aucune partition trouv\u00e9e", custom: "Import personnel",
+    category_all: "Tout", category_classical: "Classique", category_traditional: "Traditionnel",
+    category_custom: "Personnalis\u00e9", diff_all: "Tout", diff_easy: "Facile", diff_medium: "Moyen", diff_hard: "Difficile",
+  },
+  hud: { score: "Score", combo: "Combo", hp: "HP", progress: "Progression" },
+  result: {
+    complete: "Pratique termin\u00e9e", failed: "Pratique \u00e9chou\u00e9e",
+    score: "Score", max_combo: "Combo max", accuracy: "Pr\u00e9cision",
+time: "Temps",
+    points_earned: "Points gagn\u00e9s",
+    retry: "R\u00e9essayer",
+    home: "Accueil",
+    difficulty_up: "Niveau Sup\u00e9rieur",
+    difficulty_up_desc: "Excellente performance ! Essayer un niveau plus difficile ?",
+    stay: "Rester",
+    back_to_library: "Retour \u00e0 la Biblioth\u00e8que",
+  },
+  countdown: {
+    ready: "Pret",
+    go: "Go!",
+  },
+  score_mode: {
+    practice: "Entrainement",
+    challenge: "Defi",
+    practice_desc: "Vitesse ajustable, sans score",
+    challenge_desc: "Vitesse originale avec score",
+    select_mode: "Choisir le mode",
+    start: "Commencer",
+  },
+  song_switcher: {
+    title: "Liste des morceaux",
+    current: "En cours",
+    switch_to: "Changer",
+  },
+  view_mode: {
+    waterfall: "Cascade",
+    staff: "Portee",
+  },
+  score_delete: {
+    confirm: "Supprimer cette partition?",
+    delete: "Supprimer",
+    failed: "Echec de la suppression: {msg}",
+  },
+  listen_only: {
+    label: "Audio Original",
+    active: "Lecture audio original",
+    disabled_tip: "Mettez en pause pour activer l'audio original",
+  },
+};
+
+export default lang;

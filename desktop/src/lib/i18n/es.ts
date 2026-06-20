@@ -1,0 +1,116 @@
+import type { Translation } from "./types";
+
+const lang: Translation = {
+  app: { title: "Visualizador de Piano MIDI", phase_label: "Fase 11 \u00b7 MIDI Nativo" },
+  toast: { loaded: "Cargado {name} ({n} notas)", load_failed: "Error al cargar: {msg}" },
+  header: {
+    select_demo: "Elegir demo", load_mid: "Cargar .mid", recording: "Grabar", stop: "Parar",
+    start_recording_tip: "Iniciar grabaci\u00f3n", stop_recording_tip: "Detener grabaci\u00f3n",
+    replay_tip: "Reproducir", save_midi_tip: "Guardar MIDI", sight_reading_tip: "Lectura a vista",
+    practice_tip: "Modo pr\u00e1ctica", settings_tip: "Ajustes",
+  },
+  drop: { title: "Soltar archivo .mid", hint: "Soltar para cargar" },
+  sight: {
+    title: "Lectura a vista", close: "Cerrar", key: "Tonalidad", octave: "Octava inicial",
+    octave_short_low: "baja", octave_short_high: "alta", difficulty: "Dificultad",
+    bars: "Compases", bpm: "BPM ({bpm})", seed_label: "seed: {seed}",
+    generate: "Nuevo ejercicio", redo: "Repetir", redo_tip: "Regenerar con el seed anterior",
+  },
+  settings: {
+    title: "Ajustes", close: "Cerrar", language: "Idioma", show_labels: "Nombres de notas",
+    color_mode: "Modo de color", color_split: "Dividido", color_track: "Por pista",
+    color_none: "Ninguno", synth_enabled: "Sintetizador activado",
+    time_window: "Ventana de tiempo {n}s", hit_window: "Ventana de acierto \u00b1{n}ms",
+    octave: "Octava (Z/X ajustar) {n}", octave_hint: "ajustar", tone: "Tono",
+    additive: "S\u00edntesis aditiva", load_samples: "Cargar muestras (~{mb}MB)",
+    loading: "Cargando {loaded}/{total}", ready: "Listo", unload: "Descargar",
+    load_failed: "Error al cargar: {msg}",
+    sf_hint: "Splendid Grand descarga muestras la primera vez, luego las almacena.",
+    midi_devices: "Dispositivos MIDI", rescan_tip: "Reescanear MIDI",
+    no_backend: "No hay backend MIDI. Use la app de escritorio o Chrome/Edge.",
+    no_input: "No se detect\u00f3 entrada MIDI. Conecte y actualice.",
+    native: "Nativo", web: "Web",
+  },
+  song: { notes_count: "{n} notas", unload_tip: "Descargar" },
+  stats: {
+    title: "Estad\u00edsticas", reset_tip: "Reiniciar", hits: "Aciertos", missed: "Perdidos",
+    wrong: "Errores", accuracy: "Precisi\u00f3n", avg_timing: "Tiempo medio {ms}ms", no_data: "Sin datos",
+  },
+  transport: {
+    play_tip: "Reproducir", pause_tip: "Pausar", tempo: "Tempo", loop_tip: "Bucle",
+    clear_ab_tip: "Limpiar bucle AB", unload: "Descargar",
+  },
+  error: { title: "Algo sali\u00f3 mal", retry: "Reintentar" },
+  difficulties: {
+    beginner: "Principiante: escala, negras",
+    intermediate: "Intermedio: corcheas y acordes",
+    advanced: "Avanzado: semicorcheas y saltos",
+  },
+  home: {
+    app_title: "Pr\u00e1ctica de Piano", app_subtitle: "Disfruta cada momento musical",
+    rank: "Rango", total_points: "Puntos totales", next_rank: "Siguiente rango",
+    free_title: "Juego Libre", free_desc: "Toca libremente con entrada MIDI, grabaci\u00f3n y archivos",
+    free_diff: "Todos los niveles",
+    random_title: "Pr\u00e1ctica Aleatoria", random_desc: "Ejercicios de lectura a vista con dificultad progresiva",
+    random_diff: "Adaptativo",
+    score_title: "Pr\u00e1ctica con Partituras", score_desc: "Elige piezas cl\u00e1sicas para lectura a vista",
+    score_diff: "Por niveles",
+    footer: "Piano Practice \u00b7 Ilumina cada d\u00eda con m\u00fasica",
+  },
+  free: {
+    summary_title: "Resumen de sesi\u00f3n", duration: "Duraci\u00f3n", key_presses: "Pulsaciones",
+    note_range: "Rango de notas", continue: "Continuar", back_home: "Volver al inicio",
+  },
+  score: {
+    title: "Biblioteca de partituras", search: "Buscar partituras\u2026", import: "Importar MIDI",
+    no_results: "No se encontraron partituras", custom: "Importaci\u00f3n personalizada",
+    category_all: "Todo", category_classical: "Cl\u00e1sica", category_traditional: "Tradicional",
+    category_custom: "Personalizado", diff_all: "Todo", diff_easy: "F\u00e1cil", diff_medium: "Medio", diff_hard: "Dif\u00edcil",
+  },
+  hud: { score: "Puntuaci\u00f3n", combo: "Combo", hp: "HP", progress: "Progreso" },
+  result: {
+    complete: "Pr\u00e1ctica completada", failed: "Pr\u00e1ctica fallida",
+    score: "Puntuaci\u00f3n", max_combo: "Combo m\u00e1ximo", accuracy: "Precisi\u00f3n",
+time: "Tiempo",
+    points_earned: "Puntos obtenidos",
+    retry: "Reintentar",
+    home: "Inicio",
+    difficulty_up: "Subir Nivel",
+    difficulty_up_desc: "\u00a1Gran actuaci\u00f3n! \u00bfProbar una dificultad mayor?",
+    stay: "Mantener",
+    back_to_library: "Volver a la Biblioteca",
+  },
+  countdown: {
+    ready: "Preparado",
+    go: "Ya!",
+  },
+  score_mode: {
+    practice: "Practica",
+    challenge: "Reto",
+    practice_desc: "Velocidad ajustable, sin puntuacion",
+    challenge_desc: "Velocidad original con puntuacion",
+    select_mode: "Seleccionar modo",
+    start: "Comenzar",
+  },
+  song_switcher: {
+    title: "Lista de canciones",
+    current: "Actual",
+    switch_to: "Cambiar",
+  },
+  view_mode: {
+    waterfall: "Cascada",
+    staff: "Pentagrama",
+  },
+  score_delete: {
+    confirm: "Eliminar esta partitura?",
+    delete: "Eliminar",
+    failed: "Error al eliminar: {msg}",
+  },
+  listen_only: {
+    label: "Audio Original",
+    active: "Reproduciendo audio original",
+    disabled_tip: "Pausa antes para activar el audio original",
+  },
+};
+
+export default lang;

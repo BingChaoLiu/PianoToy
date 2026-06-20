@@ -1,0 +1,116 @@
+import type { Translation } from "./types";
+
+const lang: Translation = {
+  app: { title: "Klavier MIDI-Visualisierer", phase_label: "Phase 11 \u00b7 Natives MIDI" },
+  toast: { loaded: "{name} geladen ({n} Noten)", load_failed: "Laden fehlgeschlagen: {msg}" },
+  header: {
+    select_demo: "Demo w\u00e4hlen", load_mid: ".mid laden", recording: "Aufn.", stop: "Stopp",
+    start_recording_tip: "Aufnahme starten", stop_recording_tip: "Aufnahme stoppen",
+    replay_tip: "Wiederholen", save_midi_tip: "MIDI speichern", sight_reading_tip: "Vom Blatt",
+    practice_tip: "\u00dbungsmodus", settings_tip: "Einstellungen",
+  },
+  drop: { title: ".mid-Datei ablegen", hint: "Loslassen zum Laden" },
+  sight: {
+    title: "Vom-Blatt-Lesen", close: "Schlie\u00dfen", key: "Tonart", octave: "Startoktave",
+    octave_short_low: "tief", octave_short_high: "hoch", difficulty: "Schwierigkeit",
+    bars: "Takte", bpm: "BPM ({bpm})", seed_label: "Seed: {seed}",
+    generate: "Neue \u00dbung", redo: "Wiederholen", redo_tip: "Mit vorherigem Seed neu generieren",
+  },
+  settings: {
+    title: "Einstellungen", close: "Schlie\u00dfen", language: "Sprache", show_labels: "Notennamen",
+    color_mode: "Farbmodus", color_split: "Geteilt", color_track: "Pro Spur",
+    color_none: "Keine", synth_enabled: "Synth aktiv",
+    time_window: "Zeitfenster {n}s", hit_window: "Trefffenster \u00b1{n}ms",
+    octave: "Oktave (Z/X anpassen) {n}", octave_hint: "anpassen", tone: "Klangfarbe",
+    additive: "Additiv", load_samples: "Samples laden (~{mb}MB)",
+    loading: "Laden {loaded}/{total}", ready: "Bereit", unload: "Entladen",
+    load_failed: "Laden fehlgeschlagen: {msg}",
+    sf_hint: "Splendid Grand l\u00e4dt Samples beim ersten Mal herunter und cacht sie.",
+    midi_devices: "MIDI-Ger\u00e4te", rescan_tip: "MIDI neu scannen",
+    no_backend: "Kein MIDI-Backend verf\u00fcgbar. Desktop-App oder Chrome/Edge verwenden.",
+    no_input: "Kein MIDI-Eingang erkannt. Ger\u00e4t verbinden und aktualisieren.",
+    native: "Nativ", web: "Web",
+  },
+  song: { notes_count: "{n} Noten", unload_tip: "Entladen" },
+  stats: {
+    title: "Statistik", reset_tip: "Zur\u00fccksetzen", hits: "Treffer", missed: "Verfehlt",
+    wrong: "Falsch", accuracy: "Genauigkeit", avg_timing: "Durchschn. Timing {ms}ms", no_data: "Keine Daten",
+  },
+  transport: {
+    play_tip: "Abspielen", pause_tip: "Pause", tempo: "Tempo", loop_tip: "Wiederholung",
+    clear_ab_tip: "AB-Wiederholung l\u00f6schen", unload: "Entladen",
+  },
+  error: { title: "Etwas ist schiefgelaufen", retry: "Erneut versuchen" },
+  difficulties: {
+    beginner: "Anf\u00e4nger: Tonleiter, Viertelnoten",
+    intermediate: "Mittelstufe: Achtelnoten und Akkorde",
+    advanced: "Fortgeschritten: Sechzehntelnoten und Spr\u00fcnge",
+  },
+  home: {
+    app_title: "Klavier\u00dbung", app_subtitle: "Genie\u00dfen Sie jeden musikalischen Moment",
+    rank: "Rang", total_points: "Gesamtpunkte", next_rank: "N\u00e4chster Rang",
+    free_title: "Freies Spiel", free_desc: "Freies Spielen mit MIDI-Eingabe, Aufnahme und Dateien",
+    free_diff: "Alle Stufen",
+    random_title: "Zufalls\u00dbung", random_desc: "Vom-Blatt-\u00dbungen mit steigender Schwierigkeit",
+    random_diff: "Adaptiv",
+    score_title: "Noten\u00dbung", score_desc: "Klassische St\u00fccke f\u00fcr Vom-Blatt-Lesen w\u00e4hlen",
+    score_diff: "Nach Stufen",
+    footer: "Piano Practice \u00b7 Musik f\u00fcr jeden Tag",
+  },
+  free: {
+    summary_title: "Sitzungszusammenfassung", duration: "Dauer", key_presses: "Tastendr\u00fccke",
+    note_range: "Tonumfang", continue: "Fortsetzen", back_home: "Zur\u00fcck zum Start",
+  },
+  score: {
+    title: "Notenbibliothek", search: "Noten suchen\u2026", import: "MIDI importieren",
+    no_results: "Keine Noten gefunden", custom: "Eigener Import",
+    category_all: "Alle", category_classical: "Klassik", category_traditional: "Traditionell",
+    category_custom: "Benutzerdefiniert", diff_all: "Alle", diff_easy: "Leicht", diff_medium: "Mittel", diff_hard: "Schwer",
+  },
+  hud: { score: "Punkte", combo: "Combo", hp: "HP", progress: "Fortschritt" },
+  result: {
+    complete: "\u00dbung abgeschlossen", failed: "\u00dbung fehlgeschlagen",
+    score: "Punkte", max_combo: "Max. Combo", accuracy: "Genauigkeit",
+time: "Zeit",
+    points_earned: "Punkte erhalten",
+    retry: "Erneut versuchen",
+    home: "Startseite",
+    difficulty_up: "Level Aufsteigen",
+    difficulty_up_desc: "Gro\u00dfartige Leistung! Schwierigkeit erh\u00f6hen?",
+    stay: "Bleiben",
+    back_to_library: "Zur\u00fcck zur Bibliothek",
+  },
+  countdown: {
+    ready: "Fertig",
+    go: "Los!",
+  },
+  score_mode: {
+    practice: "Uben",
+    challenge: "Herausforderung",
+    practice_desc: "Anpassbares Tempo, keine Wertung",
+    challenge_desc: "Originaltempo mit Wertung",
+    select_mode: "Modus wahlen",
+    start: "Starten",
+  },
+  song_switcher: {
+    title: "Songliste",
+    current: "Aktuell",
+    switch_to: "Wechseln",
+  },
+  view_mode: {
+    waterfall: "Wasserfall",
+    staff: "Notensystem",
+  },
+  score_delete: {
+    confirm: "Diese Partitur loschen?",
+    delete: "Loschen",
+    failed: "Loschen fehlgeschlagen: {msg}",
+  },
+  listen_only: {
+    label: "Original Audio",
+    active: "Original Audio wird abgespielt",
+    disabled_tip: "Zuerst pausieren, um Originalton umzuschalten",
+  },
+};
+
+export default lang;
