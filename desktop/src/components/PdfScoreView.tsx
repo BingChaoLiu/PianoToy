@@ -134,11 +134,12 @@ export function PdfScoreView() {
   }, [currentFolder, metaTick]);
 
   // RAF loop: scroll PDF to the interpolated y for the current song time.
+  // Paused while editing anchors so the user can browse the PDF freely.
   useEffect(() => {
     let raf = 0;
     const loop = () => {
       const viewer = viewerRef.current;
-      if (viewer && song) {
+      if (viewer && song && !editing) {
         const pb = usePlaybackStore.getState();
         const songT = pb.currentSongTime(song);
         const y = interpolatePdfY(songT, anchorsRef.current);
@@ -148,7 +149,7 @@ export function PdfScoreView() {
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [song]);
+  }, [song, editing]);
 
   if (!hasPdf) {
     return (
@@ -181,7 +182,6 @@ export function PdfScoreView() {
           <AnchorEditorOverlay
             folder={currentFolder}
             hostRef={hostRef}
-            pageHeight={viewerRef.current?.pageHeight ?? 0}
             scrollableHeight={viewerRef.current?.scrollableHeight ?? 0}
             onChanged={() => setMetaTick((v) => v + 1)}
           />

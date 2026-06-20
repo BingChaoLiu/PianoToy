@@ -12,13 +12,12 @@ import type { PdfAnchor, ScoreMeta } from "@/lib/score-storage/types";
 interface Props {
   folder: string | null;
   hostRef: React.RefObject<HTMLDivElement | null>;
-  pageHeight: number;
   scrollableHeight: number;
   /** Force PdfScoreView to re-read meta after we save. */
   onChanged: () => void;
 }
 
-export function AnchorEditorOverlay({ folder, hostRef, pageHeight, scrollableHeight, onChanged }: Props) {
+export function AnchorEditorOverlay({ folder, hostRef, scrollableHeight, onChanged }: Props) {
   const song = useSongStore((s) => s.song);
   const [pending, setPending] = useState<{ y: number } | null>(null);
   const [anchors, setAnchors] = useState<PdfAnchor[]>([]);
@@ -91,7 +90,11 @@ export function AnchorEditorOverlay({ folder, hostRef, pageHeight, scrollableHei
   if (!folder) return null;
 
   return (
-    <div className="absolute inset-0 z-10 cursor-crosshair" onClick={onHostClick}>
+    <div
+      className="absolute left-0 right-0 top-0 z-10 cursor-crosshair"
+      style={{ height: scrollableHeight || "100%" }}
+      onClick={onHostClick}
+    >
       {/* Existing anchors as full-width horizontal lines */}
       {anchors.map((a, i) => (
         <div
@@ -127,8 +130,6 @@ export function AnchorEditorOverlay({ folder, hostRef, pageHeight, scrollableHei
           </button>
         </div>
       )}
-      {/* pageHeight hint (currently unused for layout but kept for future snapping) */}
-      <span className="hidden">{pageHeight}</span>
     </div>
   );
 }

@@ -80,9 +80,15 @@ export async function openPdfViewer(
   const pageCount = doc.numPages;
   const scrollableHeight = pageHeight * pageCount;
 
-  // Build the canvas stack inside the host.
+  // Build the canvas stack inside an inner content wrapper. The host stays the
+  // caller-controlled scroll viewport (it must have a bounded height + overflow);
+  // the content wrapper carries the full document height so the host can scroll.
   host.innerHTML = "";
-  host.style.position = "relative";
+  const content = document.createElement("div");
+  content.style.position = "relative";
+  content.style.width = "100%";
+  content.style.height = `${scrollableHeight}px`;
+  host.appendChild(content);
   const canvases: HTMLCanvasElement[] = [];
   for (let i = 0; i < pageCount; i++) {
     const c = document.createElement("canvas");
@@ -93,10 +99,9 @@ export async function openPdfViewer(
     c.style.top = `${i * pageHeight}px`;
     c.style.width = `${targetWidth}px`;
     c.style.height = `${pageHeight}px`;
-    host.appendChild(c);
+    content.appendChild(c);
     canvases.push(c);
   }
-  host.style.height = `${scrollableHeight}px`;
 
   const rendered = new Set<number>();
   async function renderPage(pageIndex: number): Promise<void> {
@@ -120,10 +125,13 @@ export async function openPdfViewer(
   }
 
   async function scrollToY(y: number): Promise<void> {
-    const firstVisible = Math.max(0, Math.floor(y / pageHeight) - 1);
+    // Actually move the viewport, then paint the now-visible window of pages.
+    const clamped = Math.max(0, Math.min(y, scrollableHeight - (host.clientHeight || pageHeight)));
+    host.scrollTop = clamped;
+    const firstVisible = Math.max(0, Math.floor(clamped / pageHeight) - 1);
     const lastVisible = Math.min(
       pageCount - 1,
-      Math.ceil((y + (host.clientHeight || pageHeight)) / pageHeight) + 1,
+      Math.ceil((clamped + (host.clientHeight || pageHeight)) / pageHeight) + 1,
     );
     for (let i = firstVisible; i <= lastVisible; i++) {
       void renderPage(i);
