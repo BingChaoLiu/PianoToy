@@ -81,18 +81,7 @@ export function Stage() {
         const dt = Math.min(now - lastTime, 0.05); // cap at 50ms
         lastTime = now;
 
-        ctx.clearRect(0, 0, layout.width, layout.height);
-
-        const pianoTop = layout.height - layout.pianoHeight;
-        const waterBottom = pianoTop;
-
-        // 1) Grid or staff background
         const viewMode = useScoreViewStore.getState().mode;
-        if (viewMode === "staff") {
-          // Staff view: skip grid, staff renderer draws its own background
-        } else {
-          drawGrid({ ctx, layout, waterBottom });
-        }
 
         // 2) Song time
         const songT = pb.currentSongTime(song);
@@ -107,7 +96,9 @@ export function Stage() {
           });
         }
 
-        // 4) Playback + missed note detection
+        // 4) Playback scheduling must keep running in every view mode (incl. pdf)
+        // so audio + PDF scroll stay in sync. Only the canvas drawing is skipped
+        // in pdf mode — PdfScoreView renders the score as an overlay instead.
         if (pb.isPlaying && song) {
           const mode = useAppModeStore.getState().mode;
           const listenOnly = usePlaybackModeStore.getState().listenOnly;
@@ -116,6 +107,27 @@ export function Stage() {
           // playing the demo whenever hit detection (practiceStore.enabled) is off.
           const demoAudio = mode === "score-practice" ? listenOnly : !practiceStore.enabled;
           schedulePlayback(song, pb, demoAudio, settings.synthEnabled);
+        }
+
+        // PDF view: no falling notes / hit detection / piano canvas. Keep the
+        // RAF alive (playback + PdfScoreView scroll continue) but skip drawing.
+        if (viewMode === "pdf") {
+          input.pruneWrongFlash(now);
+          input.pruneHistory(now);
+          raf = requestAnimationFrame(loop);
+          return;
+        }
+
+        ctx.clearRect(0, 0, layout.width, layout.height);
+
+        const pianoTop = layout.height - layout.pianoHeight;
+        const waterBottom = pianoTop;
+
+        // 1) Grid or staff background
+        if (viewMode === "staff") {
+          // Staff view: skip grid, staff renderer draws its own background
+        } else {
+          drawGrid({ ctx, layout, waterBottom });
         }
 
         if (practiceStore.enabled && song) {

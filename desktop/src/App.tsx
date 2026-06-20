@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Settings, Eye, ListMusic, ArrowRightLeft, Music, AlignVerticalJustifyCenter, Headphones,
+  ArrowLeft, Settings, Eye, ListMusic, ArrowRightLeft, Music, AlignVerticalJustifyCenter, Headphones, FileText,
 } from "lucide-react";
 import { Stage } from "@/components/Stage";
 import { SettingsPanel } from "@/components/SettingsPanel";
@@ -18,6 +18,7 @@ import { ResultPanel } from "@/components/ResultPanel";
 import { FreePlaySummary } from "@/components/FreePlaySummary";
 import { HomePage } from "@/components/HomePage";
 import { ScoreLibraryPage } from "@/components/ScoreLibraryPage";
+import { PdfScoreView } from "@/components/PdfScoreView";
 import { CountdownOverlay } from "@/components/CountdownOverlay";
 import { SongSwitcher } from "@/components/SongSwitcher";
 import { ScoreModeSelector } from "@/components/ScoreModeSelector";
@@ -85,6 +86,13 @@ export function App() {
   const listenOnly = usePlaybackModeStore((s) => s.listenOnly);
   const setListenOnly = usePlaybackModeStore((s) => s.setListenOnly);
   const isRhythmMode = mode === "random-practice" || (mode === "score-practice" && scoreMode === "challenge");
+  // Whether the currently-loaded song has an accompanying PDF (for the view toggle).
+  const hasPdfCurrent = useScoreLibraryStore((s) => {
+    if (!song) return false;
+    return s.customScores.some(
+      (e) => e.name === song.name && Math.abs(e.duration - song.duration) < 1.5 && e.hasPdf,
+    );
+  });
 
   // One-time migration (IndexedDB → filesystem) + score library scan on mount.
   useEffect(() => {
@@ -100,6 +108,13 @@ export function App() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // Fall back to waterfall view if the current song has no PDF but we're in pdf view.
+  useEffect(() => {
+    if (viewMode === "pdf" && !hasPdfCurrent) {
+      setViewMode("waterfall");
+    }
+  }, [viewMode, hasPdfCurrent, setViewMode]);
 
   // --- Mode entry effects ---
   useEffect(() => {
@@ -416,7 +431,7 @@ export function App() {
               >
                 <ListMusic className="h-4 w-4" />
               </Button>
-              {/* View mode toggle: waterfall vs staff */}
+              {/* View mode toggle: waterfall / staff / pdf */}
              <div className="flex items-center rounded-md border border-bg-2 bg-bg-2 p-0.5">
                <Button
                   variant={viewMode === "waterfall" ? "default" : "ghost"}
@@ -435,6 +450,16 @@ export function App() {
                   title={t("view_mode.staff")}
                >
                  <Music className="h-3 w-3" />
+               </Button>
+               <Button
+                  variant={viewMode === "pdf" ? "default" : "ghost"}
+                  size="sm"
+                  className="h-6 px-2"
+                  disabled={!hasPdfCurrent}
+                  onClick={() => setViewMode("pdf")}
+                  title={t("view_mode.pdf")}
+               >
+                 <FileText className="h-3 w-3" />
                </Button>
              </div>
              {scoreMode === "practice" && <TempoControl />}
@@ -477,6 +502,11 @@ export function App() {
 
       <div className="relative flex flex-1 overflow-hidden">
         <Stage />
+        {viewMode === "pdf" && (
+          <div className="absolute inset-0 z-10">
+            <PdfScoreView />
+          </div>
+        )}
         {mode === "free" && <SongStatusBar />}
         {showHUD && (
           <>

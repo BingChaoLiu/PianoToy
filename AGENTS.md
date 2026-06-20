@@ -9,6 +9,10 @@ See `desktop/MEMORY.md` for comprehensive project documentation.
 ## Key Rules
 1. Only modify files under `desktop/src/` (frontend code)
 2. Never modify `src-tauri/`, `scripts/`, `node_modules/`, `dist/`
+   EXCEPTION: the scores filesystem subsystem is permitted — extending the
+   `get_scores_root` / `list_score_folders` / `delete_score_folder` commands
+   (and their helpers `validate_folder_name` / `safe_join` / `scores_root`) in
+   `src-tauri/src/lib.rs` is allowed when working on score storage features.
 3. Maintain 6-language i18n: add all new text to zh-CN, en, ja, es, fr, de locale files
 4. Use existing Zustand store architecture; no new state management libraries
 5. No accounts, paid services, or online features
