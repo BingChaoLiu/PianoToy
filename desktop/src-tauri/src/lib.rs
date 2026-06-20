@@ -14,6 +14,14 @@ fn read_midi_bytes(path: String) -> Result<Vec<u8>, String> {
 #[tauri::command]
 fn save_midi_bytes(path: String, bytes: Vec<u8>) -> Result<(), String> {
     let p = PathBuf::from(&path);
+    // Create the parent directory tree first — fs::write only creates the file
+    // itself. Score writes target <scores>/<folder>/song.mid where the per-score
+    // folder may not exist yet (it is never created by any other command), so
+    // without this the first write fails with OS error 3 (path not found).
+    if let Some(parent) = p.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("create_dir_all {} failed: {}", parent.display(), e))?;
+    }
     fs::write(&p, &bytes).map_err(|e| format!("failed to write {}: {}", p.display(), e))
 }
 
