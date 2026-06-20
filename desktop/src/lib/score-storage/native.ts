@@ -94,9 +94,3 @@ export async function readPdf(folder: string): Promise<Uint8Array | null> {
     return null;
   }
 }
-
-/** Whether score.pdf exists in a folder (best-effort). */
-export async function hasPdfNative(folder: string): Promise<boolean> {
-  const b = await readPdf(folder);
-  return b !== null;
-}

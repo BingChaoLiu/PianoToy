@@ -40,9 +40,7 @@ interface ScoreLibraryState {
   loaded: boolean;
   /** Rescan the file system and refresh customScores. */
   rescan: () => Promise<void>;
-  addCustomScore: (entry: ScoreEntry) => void;
   removeCustomScore: (id: string) => void;
-  setCustomScores: (scores: ScoreEntry[]) => void;
 }
 
 export const useScoreLibraryStore = create<ScoreLibraryState>()(
@@ -70,11 +68,8 @@ export const useScoreLibraryStore = create<ScoreLibraryState>()(
           set({ loaded: true }); // don't block the UI on scan failure
         }
       },
-      addCustomScore: (entry) =>
-        set((s) => ({ customScores: [...s.customScores, entry] })),
       removeCustomScore: (id) =>
         set((s) => ({ customScores: s.customScores.filter((e) => e.id !== id) })),
-      setCustomScores: (customScores) => set({ customScores }),
     }),
     {
       name: "piano.score-library",
