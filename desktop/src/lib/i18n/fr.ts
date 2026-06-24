@@ -39,6 +39,7 @@ const lang: Translation = {
   transport: {
     play_tip: "Lire", pause_tip: "Pause", tempo: "Tempo", loop_tip: "Boucle",
     clear_ab_tip: "Effacer boucle AB", unload: "D\u00e9charger",
+    replay_tip: "Rejouer",
   },
   error: { title: "Une erreur est survenue", retry: "R\u00e9essayer" },
   difficulties: {
@@ -55,6 +56,9 @@ const lang: Translation = {
     random_diff: "Adaptatif",
     score_title: "Pratique Partitions", score_desc: "Choisissez des classiques pour la lecture \u00e0 vue",
     score_diff: "Par niveaux",
+    reading_title: "Lecture de notes",
+    reading_desc: "Reconnaissez les notes sur la portée, entraînez votre lecture",
+    reading_diff: "Débutant",
     footer: "Piano Practice \u00b7 Illuminez chaque jour avec la musique",
   },
   free: {
@@ -66,6 +70,7 @@ const lang: Translation = {
     no_results: "Aucune partition trouv\u00e9e", custom: "Import personnel",
     category_all: "Tout", category_classical: "Classique", category_traditional: "Traditionnel",
     category_custom: "Personnalis\u00e9", diff_all: "Tout", diff_easy: "Facile", diff_medium: "Moyen", diff_hard: "Difficile",
+    grid_view: "Affichage en grille", list_view: "Affichage en liste",
   },
   hud: { score: "Score", combo: "Combo", hp: "HP", progress: "Progression" },
   result: {
@@ -83,6 +88,9 @@ time: "Temps",
   countdown: {
     ready: "Pret",
     go: "Go!",
+    press_space_start: "Appuyez sur ESPACE pour commencer",
+    press_space_resume: "Appuyez sur ESPACE pour reprendre",
+    paused: "PAUSE",
   },
   score_mode: {
     practice: "Entrainement",
@@ -134,6 +142,18 @@ time: "Temps",
     use_current_time: "Utiliser le temps de lecture actuel",
     no_pdf: "Cette partition n'a pas de PDF",
     loading: "Chargement…",
+  },
+  reading: {
+    mode_label: "Lecture de notes",
+    back: "Retour",
+    press_middle_c: "Appuyez sur Do central pour commencer",
+    press_middle_c_hint: "Appuyez sur Do central (C4) au clavier ou sur votre appareil MIDI",
+    correct: "Correct",
+    wrong: "Faux",
+    streak: "Série",
+    best_streak: "Meilleure série",
+    summary_title: "Résultat de lecture",
+    continue: "Continuer",
   },
 };
 

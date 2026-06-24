@@ -58,7 +58,7 @@ const lang: Translation = {
     tone: "Tone",
     additive: "Additive",
     load_samples: "Load samples (~{mb}MB)",
-    loading: "Loading {loaded}/{total}",
+    loading: "Loading\u2026",
     ready: "Ready",
     unload: "Unload",
     load_failed: "Load failed: {msg}",
@@ -91,6 +91,7 @@ const lang: Translation = {
     loop_tip: "Loop",
     clear_ab_tip: "Clear AB loop",
     unload: "Unload",
+    replay_tip: "Replay",
   },
   error: {
     title: "Something went wrong",
@@ -116,6 +117,9 @@ const lang: Translation = {
     score_title: "Score Practice",
     score_desc: "Choose classic piano pieces for sight-reading practice",
     score_diff: "Graded",
+    reading_title: "Note Reading",
+    reading_desc: "Recognize notes on the staff, train your sight-reading",
+    reading_diff: "Beginner",
     footer: "Piano Practice \u00b7 Light up every day with music",
   },
   free: {
@@ -140,6 +144,8 @@ const lang: Translation = {
     diff_easy: "Easy",
     diff_medium: "Medium",
     diff_hard: "Hard",
+    grid_view: "Grid View",
+    list_view: "List View",
   },
   hud: {
     score: "Score",
@@ -165,6 +171,9 @@ const lang: Translation = {
   countdown: {
     ready: "Ready",
     go: "Go!",
+    press_space_start: "Press SPACE to Start",
+    press_space_resume: "Press SPACE to Resume",
+    paused: "PAUSED",
   },
   score_mode: {
     practice: "Practice",
@@ -216,6 +225,18 @@ const lang: Translation = {
     use_current_time: "Use current playback time",
     no_pdf: "This score has no PDF",
     loading: "Loading…",
+  },
+  reading: {
+    mode_label: "Note Reading",
+    back: "Back",
+    press_middle_c: "Press middle C to start",
+    press_middle_c_hint: "Press middle C (C4) on your keyboard or MIDI device",
+    correct: "Correct",
+    wrong: "Wrong",
+    streak: "Streak",
+    best_streak: "Best streak",
+    summary_title: "Reading Result",
+    continue: "Continue",
   },
 };
 

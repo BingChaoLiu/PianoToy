@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Settings, Eye, ListMusic, ArrowRightLeft, Music, AlignVerticalJustifyCenter, Headphones, FileText,
+  ArrowLeft, Settings, Eye, ListMusic, ArrowRightLeft, Music, AlignVerticalJustifyCenter, Headphones, FileText, RotateCcw,
 } from "lucide-react";
 import { Stage } from "@/components/Stage";
 import { SettingsPanel } from "@/components/SettingsPanel";
@@ -22,6 +22,9 @@ import { PdfScoreView } from "@/components/PdfScoreView";
 import { CountdownOverlay } from "@/components/CountdownOverlay";
 import { SongSwitcher } from "@/components/SongSwitcher";
 import { ScoreModeSelector } from "@/components/ScoreModeSelector";
+import { PracticeStatusOverlay } from "@/components/PracticeStatusOverlay";
+import { NoteReadingStage } from "@/components/NoteReadingStage";
+import { NoteReadingSummary } from "@/components/NoteReadingSummary";
 import { useKeyboardHotkeys } from "@/lib/keyboard-hotkeys";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useSongStore } from "@/store/useSongStore";
@@ -35,6 +38,7 @@ import { useScorePracticeStore, type ScorePracticeMode } from "@/store/useScoreP
 import { useScoreViewStore } from "@/store/useScoreViewStore";
 import { usePlaybackModeStore } from "@/store/usePlaybackModeStore";
 import { useScoreLibraryStore } from "@/store/useScoreLibraryStore";
+import { useNoteReadingStore } from "@/store/useNoteReadingStore";
 import { migrateIndexedDbToFs } from "@/lib/score-storage/migration";
 import { stopAllSynthVoices } from "@/lib/synth";
 import { resetScheduledFlags } from "@/lib/playback-scheduler";
@@ -60,6 +64,8 @@ export function App() {
   const [countdownActive, setCountdownActive] = useState(false);
   const [songSwitcherOpen, setSongSwitcherOpen] = useState(false);
   const [showScoreModeSelector, setShowScoreModeSelector] = useState(false);
+  const [showReadingSummary, setShowReadingSummary] = useState(false);
+  const [practiceState, setPracticeState] = useState<"idle" | "waiting-to-start" | "countdown-to-start" | "playing" | "paused" | "countdown-to-resume">("idle");
 
   const octave = useSettingsStore((s) => s.octave);
   const setOctave = useSettingsStore((s) => s.setOctave);
@@ -86,6 +92,8 @@ export function App() {
   const listenOnly = usePlaybackModeStore((s) => s.listenOnly);
   const setListenOnly = usePlaybackModeStore((s) => s.setListenOnly);
   const isRhythmMode = mode === "random-practice" || (mode === "score-practice" && scoreMode === "challenge");
+  const isFinished = useRhythmGameStore((s) => s.isFinished);
+  const isFailed = useRhythmGameStore((s) => s.isFailed);
   // Whether the currently-loaded song has an accompanying PDF (for the view toggle).
   const hasPdfCurrent = useScoreLibraryStore((s) => {
     if (!song) return false;
@@ -179,8 +187,8 @@ export function App() {
     return () => clearInterval(id);
   }, [isRhythmMode, practiceEnabled, song]);
 
-  // --- Start playback with negative offset so notes fall during countdown ---
-  const startPracticeWithLead = useCallback(() => {
+  // --- Prepare practice with negative offset, but paused ---
+  const preparePracticeWithLead = useCallback(() => {
     const currentSong = useSongStore.getState().song;
     if (!currentSong) return;
     const pb = usePlaybackStore.getState();
@@ -197,15 +205,37 @@ export function App() {
     usePlaybackStore.setState({
       playStartSongT: -COUNTDOWN_LEAD_SEC,
       playStartCtx: 0,
+      isPlaying: false,
     });
-    pb.play(currentSong);
-    setCountdownActive(true);
+    setCountdownActive(false);
+    setPracticeState("waiting-to-start");
   }, []);
 
-  // --- Countdown complete: playback already running, just hide overlay ---
+  const handleReplay = useCallback(() => {
+    const currentSong = useSongStore.getState().song;
+    if (!currentSong) return;
+
+    useRhythmGameStore.getState().resetSession();
+    usePracticeStore.getState().resetStats();
+    usePracticeStore.getState().resetForSong(currentSong);
+    useRhythmGameStore.getState().startSession();
+    usePlaybackStore.getState().pause();
+
+    preparePracticeWithLead();
+  }, [preparePracticeWithLead]);
+
+  // --- Countdown complete: handles both start and resume transitions ---
   const handleCountdownComplete = useCallback(() => {
     setCountdownActive(false);
-  }, []);
+    if (practiceState === "countdown-to-resume") {
+      const currentSong = useSongStore.getState().song;
+      if (currentSong) {
+        const pb = usePlaybackStore.getState();
+        pb.play(currentSong);
+      }
+    }
+    setPracticeState("playing");
+  }, [practiceState]);
 
   // --- Score mode selection ---
   const handleScoreModeSelected = useCallback((m: ScorePracticeMode) => {
@@ -214,8 +244,8 @@ export function App() {
     const currentSong = useSongStore.getState().song;
     if (!currentSong) return;
 
-    // Challenge mode enables hit detection + scoring; practice mode does not
-    usePracticeStore.getState().setEnabled(m === "challenge");
+    // Enable hit detection for both modes; only challenge mode has scoring/HUD
+    usePracticeStore.getState().setEnabled(true);
     usePracticeStore.getState().resetForSong(currentSong);
     // Entering score practice should always start with original audio off;
     // the user can opt in from the (paused) toolbar.
@@ -226,8 +256,8 @@ export function App() {
       usePlaybackStore.getState().setTempoScale(1.0);
     }
 
-    startPracticeWithLead();
-  }, []);
+    preparePracticeWithLead();
+  }, [preparePracticeWithLead]);
 
   // --- Song switcher callback ---
   const handleSongSwitched = useCallback(() => {
@@ -235,7 +265,7 @@ export function App() {
     const currentSong = useSongStore.getState().song;
     if (!currentSong) return;
 
-    usePracticeStore.getState().setEnabled(currentMode === "challenge");
+    usePracticeStore.getState().setEnabled(true);
     usePracticeStore.getState().resetForSong(currentSong);
     // Switching songs re-enters practice; reset original audio to off.
     usePlaybackModeStore.getState().setListenOnly(false);
@@ -245,8 +275,46 @@ export function App() {
       usePlaybackStore.getState().setTempoScale(1.0);
     }
 
-    startPracticeWithLead();
-  }, []);
+    preparePracticeWithLead();
+  }, [preparePracticeWithLead]);
+
+  // --- Handle spacebar or overlay click for state transitions ---
+  const handleSpaceOrClick = useCallback(() => {
+    if (!song) return;
+    const isPracticeMode = mode === "random-practice" || mode === "score-practice";
+    if (isPracticeMode) {
+      if (showScoreModeSelector) return;
+
+      if (practiceState === "waiting-to-start") {
+        setPracticeState("countdown-to-start");
+        const pb = usePlaybackStore.getState();
+        pb.pause();
+        stopAllSynthVoices();
+        resetScheduledFlags(song, -COUNTDOWN_LEAD_SEC);
+        usePlaybackStore.setState({
+          playStartSongT: -COUNTDOWN_LEAD_SEC,
+          playStartCtx: 0,
+        });
+        pb.play(song);
+        setCountdownActive(true);
+      } else if (
+        practiceState === "playing" ||
+        practiceState === "countdown-to-start" ||
+        practiceState === "countdown-to-resume"
+      ) {
+        const pb = usePlaybackStore.getState();
+        pb.pause();
+        setCountdownActive(false);
+        setPracticeState("paused");
+      } else if (practiceState === "paused") {
+        setPracticeState("countdown-to-resume");
+        setCountdownActive(true);
+      }
+    } else {
+      if (isPlaying) pause();
+      else play(song);
+    }
+  }, [song, mode, practiceState, showScoreModeSelector, isPlaying, play, pause]);
 
   const togglePractice = () => {
     if (!song) return;
@@ -266,15 +334,14 @@ export function App() {
     const onKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-      if (e.key === " " && song) {
+      if (e.key === " ") {
         e.preventDefault();
-        if (isPlaying) pause();
-        else play(song);
+        handleSpaceOrClick();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [song, isPlaying, play, pause]);
+  }, [handleSpaceOrClick]);
 
   useEffect(() => () => stopAllSynthVoices(), []);
 
@@ -300,6 +367,7 @@ export function App() {
       }
     }
     setCountdownActive(false);
+    setPracticeState("idle");
     setSongSwitcherOpen(false);
     usePlaybackStore.getState().pause();
     usePracticeStore.getState().setEnabled(false);
@@ -325,6 +393,7 @@ export function App() {
     useFreePlayStore.getState().endSession();
     useSongStore.getState().unload();
     useInputStore.getState().clear();
+    setPracticeState("idle");
     goHome();
   };
 
@@ -366,6 +435,41 @@ export function App() {
     );
   }
 
+  // Note-reading mode: dedicated white-staff trainer screen.
+  if (mode === "note-reading") {
+    const handleReadingExit = () => {
+      const s = useNoteReadingStore.getState();
+      // Only show summary if the user actually practiced something.
+      if (s.phase !== "prompt" && (s.correctCount + s.wrongCount) > 0) {
+        setShowReadingSummary(true);
+        return;
+      }
+      useNoteReadingStore.getState().resetSession();
+      useInputStore.getState().clear();
+      goHome();
+    };
+    return (
+      <div className="relative h-full w-full">
+        <NoteReadingStage
+          onOpenSettings={() => setSettingsOpen(true)}
+          onExit={handleReadingExit}
+        />
+        {showReadingSummary && (
+          <NoteReadingSummary
+            onClose={() => {
+              setShowReadingSummary(false);
+              useNoteReadingStore.getState().resetSession();
+              useInputStore.getState().clear();
+              goHome();
+            }}
+          />
+        )}
+        <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+        <DropOverlay onFiles={(fs) => fs.forEach(handleFile)} />
+      </div>
+    );
+  }
+
   const modeLabel =
     mode === "free" ? t("home.free_title") :
     mode === "random-practice" ? t("home.random_title") :
@@ -376,6 +480,9 @@ export function App() {
     mode === "random-practice" ||
     (mode === "score-practice" && scoreMode === "challenge")
   );
+
+  const isFinishedOrFailed = isRhythmMode && (isFinished || isFailed);
+  const showPracticeOverlay = (practiceState === "waiting-to-start" || practiceState === "paused") && !isFinishedOrFailed;
 
   return (
     <div className="relative flex h-full w-full flex-col bg-bg-0 text-fg">
@@ -402,6 +509,14 @@ export function App() {
             <>
               <Button
                 variant="ghost"
+                size="icon"
+                onClick={handleReplay}
+                title={t("transport.replay_tip")}
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
                 size="sm"
                 onClick={() => setSightOpen(true)}
                 title={t("header.sight_reading_tip")}
@@ -423,6 +538,14 @@ export function App() {
           {/* Score practice: song list + view toggle + tempo + mode switch + settings */}
           {mode === "score-practice" && (
             <>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleReplay}
+                title={t("transport.replay_tip")}
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -511,7 +634,7 @@ export function App() {
         {showHUD && (
           <>
             <RhythmGameHUD />
-            <ResultPanel onRetry={() => startPracticeWithLead()} />
+            <ResultPanel onRetry={preparePracticeWithLead} />
           </>
         )}
         {mode === "free" && <StatsPanel />}
@@ -521,9 +644,15 @@ export function App() {
           onClose={() => setSightOpen(false)}
           onGenerate={() => {
             setSightOpen(false);
-            startPracticeWithLead();
+            preparePracticeWithLead();
           }}
         />
+        {showPracticeOverlay && (
+          <PracticeStatusOverlay
+            state={practiceState as "waiting-to-start" | "paused"}
+            onClick={handleSpaceOrClick}
+          />
+        )}
         <CountdownOverlay active={countdownActive} onComplete={handleCountdownComplete} />
         <SongSwitcher open={songSwitcherOpen} onClose={() => setSongSwitcherOpen(false)} onSongSwitched={handleSongSwitched} />
         <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />

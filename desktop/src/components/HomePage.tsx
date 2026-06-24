@@ -1,6 +1,6 @@
 // HomePage: app entry with three mode cards + rank display.
 
-import { Music, Piano, GraduationCap, BookOpen, Settings, Trophy } from "lucide-react";
+import { Music, Piano, GraduationCap, BookOpen, Settings, Trophy, Music2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppModeStore } from "@/store/useAppModeStore";
 import { useRhythmGameStore, RANK_TIERS } from "@/store/useRhythmGameStore";
@@ -41,6 +41,14 @@ const MODES: ModeCard[] = [
     descKey: "home.score_desc",
     difficultyKey: "home.score_diff",
     borderColor: "border-right/30 hover:border-right/60",
+  },
+  {
+    mode: "note-reading",
+    icon: <Music2 className="h-8 w-8" />,
+    titleKey: "home.reading_title",
+    descKey: "home.reading_desc",
+    difficultyKey: "home.reading_diff",
+    borderColor: "border-yellow-400/30 hover:border-yellow-400/60",
   },
 ];
 
@@ -107,7 +115,7 @@ export function HomePage({ onOpenSettings }: { onOpenSettings: () => void }) {
           )}
         </div>
 
-        <div className="grid grid-cols-3 gap-6" style={{ maxWidth: 720 }}>
+        <div className="grid grid-cols-2 gap-6 sm:grid-cols-4" style={{ maxWidth: 880 }}>
           {MODES.map((m) => (
             <button
               key={m.mode}

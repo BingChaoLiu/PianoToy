@@ -89,6 +89,7 @@ export interface Translation {
     loop_tip: string;
     clear_ab_tip: string;
     unload: string;
+    replay_tip: string;
   };
   error: {
     title: string;
@@ -114,6 +115,9 @@ export interface Translation {
     score_title: string;
     score_desc: string;
     score_diff: string;
+    reading_title: string;
+    reading_desc: string;
+    reading_diff: string;
     footer: string;
   };
   free: {
@@ -138,6 +142,8 @@ export interface Translation {
     diff_easy: string;
     diff_medium: string;
     diff_hard: string;
+    grid_view: string;
+    list_view: string;
   };
   hud: {
     score: string;
@@ -163,6 +169,9 @@ export interface Translation {
   countdown: {
     ready: string;
     go: string;
+    press_space_start: string;
+    press_space_resume: string;
+    paused: string;
   };
   score_mode: {
     practice: string;
@@ -214,5 +223,17 @@ export interface Translation {
     use_current_time: string;
     no_pdf: string;
     loading: string;
+  };
+  reading: {
+    mode_label: string;
+    back: string;
+    press_middle_c: string;
+    press_middle_c_hint: string;
+    correct: string;
+    wrong: string;
+    streak: string;
+    best_streak: string;
+    summary_title: string;
+    continue: string;
   };
 }

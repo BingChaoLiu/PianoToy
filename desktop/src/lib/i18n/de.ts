@@ -39,6 +39,7 @@ const lang: Translation = {
   transport: {
     play_tip: "Abspielen", pause_tip: "Pause", tempo: "Tempo", loop_tip: "Wiederholung",
     clear_ab_tip: "AB-Wiederholung l\u00f6schen", unload: "Entladen",
+    replay_tip: "Wiederholen",
   },
   error: { title: "Etwas ist schiefgelaufen", retry: "Erneut versuchen" },
   difficulties: {
@@ -55,6 +56,9 @@ const lang: Translation = {
     random_diff: "Adaptiv",
     score_title: "Noten\u00dbung", score_desc: "Klassische St\u00fccke f\u00fcr Vom-Blatt-Lesen w\u00e4hlen",
     score_diff: "Nach Stufen",
+    reading_title: "Notenlesen",
+    reading_desc: "Erkenne die Noten im Notensystem, trainiere dein Notenlesen",
+    reading_diff: "Anfänger",
     footer: "Piano Practice \u00b7 Musik f\u00fcr jeden Tag",
   },
   free: {
@@ -66,6 +70,7 @@ const lang: Translation = {
     no_results: "Keine Noten gefunden", custom: "Eigener Import",
     category_all: "Alle", category_classical: "Klassik", category_traditional: "Traditionell",
     category_custom: "Benutzerdefiniert", diff_all: "Alle", diff_easy: "Leicht", diff_medium: "Mittel", diff_hard: "Schwer",
+    grid_view: "Rasteransicht", list_view: "Listenansicht",
   },
   hud: { score: "Punkte", combo: "Combo", hp: "HP", progress: "Fortschritt" },
   result: {
@@ -83,6 +88,9 @@ time: "Zeit",
   countdown: {
     ready: "Fertig",
     go: "Los!",
+    press_space_start: "Dr\u00fccken Sie LEERTASTE zum Starten",
+    press_space_resume: "Dr\u00fccken Sie LEERTASTE zum Fortsetzen",
+    paused: "PAUSIERT",
   },
   score_mode: {
     practice: "Uben",
@@ -134,6 +142,18 @@ time: "Zeit",
     use_current_time: "Aktuelle Wiedergabezeit verwenden",
     no_pdf: "Diese Partitur hat kein PDF",
     loading: "Laden…",
+  },
+  reading: {
+    mode_label: "Notenlesen",
+    back: "Zurück",
+    press_middle_c: "Drücke das mittlere C zum Starten",
+    press_middle_c_hint: "Drücke das mittlere C (C4) auf deiner Tastatur oder deinem MIDI-Gerät",
+    correct: "Richtig",
+    wrong: "Falsch",
+    streak: "Serie",
+    best_streak: "Beste Serie",
+    summary_title: "Leseergebnis",
+    continue: "Weiter",
   },
 };
 

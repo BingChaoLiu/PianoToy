@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type AppMode = "home" | "free" | "random-practice" | "score-practice";
+export type AppMode = "home" | "free" | "random-practice" | "score-practice" | "note-reading";
 
 interface AppModeState {
   mode: AppMode;

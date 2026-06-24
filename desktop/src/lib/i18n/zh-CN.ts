@@ -91,6 +91,7 @@ const lang: Translation = {
     loop_tip: "\u5faa\u73af\u64ad\u653e",
     clear_ab_tip: "\u6e05\u9664 AB \u5faa\u73af",
     unload: "\u5378\u8f7d",
+    replay_tip: "\u91cd\u65b0\u64ad\u653e",
   },
   error: {
     title: "\u51fa\u9519\u4e86",
@@ -116,6 +117,9 @@ const lang: Translation = {
     score_title: "\u4e50\u8c31\u7ec3\u4e60",
     score_desc: "\u9009\u62e9\u7ecf\u5178\u94a2\u7434\u66f2\u76ee\u8fdb\u884c\u89c6\u594f\u7ec3\u4e60\uff0c\u6311\u6218\u81ea\u5df1",
     score_diff: "\u5206\u7ea7\u96be\u5ea6",
+    reading_title: "\u8bc6\u8c31",
+    reading_desc: "\u8bc6\u522b\u4e94\u7ebf\u8c31\u4e0a\u7684\u97f3\u7b26\uff0c\u7ec3\u4e60\u89c6\u8c31\u80fd\u529b",
+    reading_diff: "\u5165\u95e8\u96be\u5ea6",
     footer: "Piano Practice \u00b7 \u7528\u97f3\u4e50\u70b9\u4eae\u6bcf\u4e00\u5929",
   },
   free: {
@@ -140,6 +144,8 @@ const lang: Translation = {
     diff_easy: "\u7b80\u5355",
     diff_medium: "\u4e2d\u7b49",
     diff_hard: "\u56f0\u96be",
+    grid_view: "\u7f51\u683c\u89c6\u56fe",
+    list_view: "\u5217\u8868\u89c6\u56fe",
   },
   hud: {
     score: "\u5f97\u5206",
@@ -165,6 +171,9 @@ const lang: Translation = {
   countdown: {
     ready: "\u51c6\u5907",
     go: "\u5f00\u59cb",
+    press_space_start: "\u6309\u7a7a\u683c\u952e\u5f00\u59cb",
+    press_space_resume: "\u6309\u7a7a\u683c\u952e\u7ee7\u7eed",
+    paused: "\u5df2\u6682\u505c",
   },
   score_mode: {
     practice: "\u7ec3\u4e60\u6a21\u5f0f",
@@ -216,6 +225,18 @@ const lang: Translation = {
     use_current_time: "\u4f7f\u7528\u5f53\u524d\u64ad\u653e\u65f6\u95f4",
     no_pdf: "\u8be5\u66f2\u76ee\u6ca1\u6709 PDF \u66f2\u8c31",
     loading: "\u52a0\u8f7d\u4e2d\u2026",
+  },
+  reading: {
+    mode_label: "\u8bc6\u8c31\u7ec3\u4e60",
+    back: "\u8fd4\u56de",
+    press_middle_c: "\u8bf7\u6309\u4e2d\u592e C \u5f00\u59cb",
+    press_middle_c_hint: "\u5728\u952e\u76d8\u6216 MIDI \u8bbe\u5907\u4e0a\u6309\u4e0b\u4e2d\u592e C\uff08C4\uff09",
+    correct: "\u6b63\u786e",
+    wrong: "\u9519\u8bef",
+    streak: "\u8fde\u51fb",
+    best_streak: "\u6700\u9ad8\u8fde\u51fb",
+    summary_title: "\u8bc6\u8c31\u7ed3\u679c",
+    continue: "\u7ee7\u7eed",
   },
 };
 

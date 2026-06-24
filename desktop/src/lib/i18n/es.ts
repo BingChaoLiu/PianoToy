@@ -39,6 +39,7 @@ const lang: Translation = {
   transport: {
     play_tip: "Reproducir", pause_tip: "Pausar", tempo: "Tempo", loop_tip: "Bucle",
     clear_ab_tip: "Limpiar bucle AB", unload: "Descargar",
+    replay_tip: "Reproducir de nuevo",
   },
   error: { title: "Algo sali\u00f3 mal", retry: "Reintentar" },
   difficulties: {
@@ -55,6 +56,9 @@ const lang: Translation = {
     random_diff: "Adaptativo",
     score_title: "Pr\u00e1ctica con Partituras", score_desc: "Elige piezas cl\u00e1sicas para lectura a vista",
     score_diff: "Por niveles",
+    reading_title: "Lectura de notas",
+    reading_desc: "Reconoce las notas en el pentagrama, entrena tu lectura",
+    reading_diff: "Inicial",
     footer: "Piano Practice \u00b7 Ilumina cada d\u00eda con m\u00fasica",
   },
   free: {
@@ -66,6 +70,7 @@ const lang: Translation = {
     no_results: "No se encontraron partituras", custom: "Importaci\u00f3n personalizada",
     category_all: "Todo", category_classical: "Cl\u00e1sica", category_traditional: "Tradicional",
     category_custom: "Personalizado", diff_all: "Todo", diff_easy: "F\u00e1cil", diff_medium: "Medio", diff_hard: "Dif\u00edcil",
+    grid_view: "Vista de cuadrícula", list_view: "Vista de lista",
   },
   hud: { score: "Puntuaci\u00f3n", combo: "Combo", hp: "HP", progress: "Progreso" },
   result: {
@@ -83,6 +88,9 @@ time: "Tiempo",
   countdown: {
     ready: "Preparado",
     go: "Ya!",
+    press_space_start: "Presiona ESPACIO para comenzar",
+    press_space_resume: "Presiona ESPACIO para reanudar",
+    paused: "PAUSADO",
   },
   score_mode: {
     practice: "Practica",
@@ -134,6 +142,18 @@ time: "Tiempo",
     use_current_time: "Usar tiempo de reproduccion actual",
     no_pdf: "Esta partitura no tiene PDF",
     loading: "Cargando…",
+  },
+  reading: {
+    mode_label: "Lectura de notas",
+    back: "Volver",
+    press_middle_c: "Pulsa Do central para empezar",
+    press_middle_c_hint: "Pulsa Do central (C4) en tu teclado o dispositivo MIDI",
+    correct: "Correcto",
+    wrong: "Incorrecto",
+    streak: "Racha",
+    best_streak: "Mejor racha",
+    summary_title: "Resultado de lectura",
+    continue: "Continuar",
   },
 };
 

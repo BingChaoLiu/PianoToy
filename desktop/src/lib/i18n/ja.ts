@@ -91,6 +91,7 @@ const lang: Translation = {
     loop_tip: "\u30eb\u30fc\u30d7",
     clear_ab_tip: "AB \u30eb\u30fc\u30d7\u3092\u30af\u30ea\u30a2",
     unload: "\u89e3\u9664",
+    replay_tip: "\u6700\u521d\u304b\u3089\u518d\u751f",
   },
   error: {
     title: "\u30a8\u30e9\u30fc\u304c\u767a\u751f\u3057\u307e\u3057\u305f",
@@ -116,6 +117,9 @@ const lang: Translation = {
     score_title: "\u697d\u8b5c\u7df4\u7fd2",
     score_desc: "\u30af\u30e9\u30b7\u30c3\u30af\u540d\u66f2\u3092\u9078\u3093\u3067\u8996\u8aad\u7df4\u4e60",
     score_diff: "\u30ec\u30d9\u30eb\u5225",
+    reading_title: "譜読み",
+    reading_desc: "五線譜の音符を見分けて、譜読み力を鍛える",
+    reading_diff: "初級",
     footer: "Piano Practice \u00b7 \u97f3\u697d\u3067\u6bce\u65e5\u3092\u7167\u3089\u305d\u3046",
   },
   free: {
@@ -140,6 +144,8 @@ const lang: Translation = {
     diff_easy: "\u7c21\u5358",
     diff_medium: "\u4e2d\u7d1a",
     diff_hard: "\u96e3\u3057\u3044",
+    grid_view: "\u30b0\u30ea\u30c3\u30c9\u8868\u793a",
+    list_view: "\u30ea\u30b9\u30c8\u8868\u793a",
   },
   hud: {
     score: "\u30b9\u30b3\u30a2",
@@ -165,6 +171,9 @@ home: "\u30db\u30fc\u30e0",
   countdown: {
     ready: "\u6e96\u5099",
     go: "\u30b9\u30bf\u30fc\u30c8!",
+    press_space_start: "\u30b9\u30da\u30fc\u30b9\u30ad\u30fc\u3092\u62bc\u3057\u3066\u958b\u59cb",
+    press_space_resume: "\u30b9\u30da\u30fc\u30b9\u30ad\u30fc\u3092\u62bc\u3057\u3066\u518d\u958b",
+    paused: "\u4e00\u6642\u505c\u6b62\u4e2d",
   },
   score_mode: {
     practice: "\u7df4\u7fd2\u30e2\u30fc\u30c9",
@@ -216,6 +225,18 @@ home: "\u30db\u30fc\u30e0",
     use_current_time: "現在の再生時間を使用",
     no_pdf: "この楽譜には PDF がありません",
     loading: "読み込み中…",
+  },
+  reading: {
+    mode_label: "譜読み練習",
+    back: "戻る",
+    press_middle_c: "中央ハを押して開始",
+    press_middle_c_hint: "キーボードまたは MIDI デバイスで中央ハ（C4）を押してください",
+    correct: "正解",
+    wrong: "不正解",
+    streak: "連続正解",
+    best_streak: "最高連続",
+    summary_title: "譜読みの結果",
+    continue: "続ける",
   },
 };
 
