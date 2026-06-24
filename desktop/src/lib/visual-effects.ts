@@ -57,6 +57,42 @@ export function spawnHitParticles(
   }
 }
 
+export function spawnSustainedParticles(
+  state: VisualEffectsState,
+  x: number,
+  y: number,
+  color: string,
+  dt: number,
+): void {
+  const rate = 45; // target particles per second
+  const prob = rate * dt;
+  let numToSpawn = 0;
+  if (prob >= 1) {
+    numToSpawn = Math.floor(prob);
+  } else if (Math.random() < prob) {
+    numToSpawn = 1;
+  }
+
+  for (let i = 0; i < numToSpawn; i++) {
+    // Upward angle cone
+    const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.5;
+    const speed = 25 + Math.random() * 45;
+    const colors = [color, color, "#ffffff", "#fffbeb"];
+    const pColor = colors[Math.floor(Math.random() * colors.length)];
+
+    state.particles.push({
+      x: x + (Math.random() - 0.5) * 10,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 15,
+      life: 1.0,
+      maxLife: 0.35 + Math.random() * 0.35,
+      size: 1.2 + Math.random() * 2.2,
+      color: pColor,
+    });
+  }
+}
+
 const MILESTONES = [10, 25, 50, 100];
 
 export function checkComboMilestone(

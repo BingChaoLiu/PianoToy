@@ -24,6 +24,7 @@ import { useRhythmGameStore } from "@/store/useRhythmGameStore";
 import { useAppModeStore } from "@/store/useAppModeStore";
 import { usePlaybackModeStore } from "@/store/usePlaybackModeStore";
 import { useVFXStore } from "@/store/useVFXStore";
+import { useScorePracticeStore } from "@/store/useScorePracticeStore";
 
 function handlePractice(midi: number) {
   const practice = usePracticeStore.getState();
@@ -35,17 +36,24 @@ function handlePractice(midi: number) {
   const hitWindow = useSettingsStore.getState().hitWindow;
 
   const result = practice.match(song, midi, songT, hitWindow);
-  // Rhythm game integration
+  
+  // Update match result in the input store so the key colors correctly
+  useInputStore.getState().setMatchResult(midi, result.kind);
+
+  if (result.kind === "hit") {
+    // Add to hitEvents queue to spawn particles at the correct key coordinate on the canvas
+    useVFXStore.getState().addHitEvent(midi);
+  }
+
+  // Rhythm game integration: only scoring if in challenge or random practice
   const mode = useAppModeStore.getState().mode;
-  const isRhythmMode = mode === "random-practice" || mode === "score-practice";
-  if (isRhythmMode) {
+  const scoreMode = useScorePracticeStore.getState().mode;
+  const isScoring = mode === "random-practice" || (mode === "score-practice" && scoreMode === "challenge");
+
+  if (isScoring) {
     const rg = useRhythmGameStore.getState();
     if (result.kind === "hit") {
       rg.onHit(result.deltaTime ?? 0);
-      // Spawn hit particles at a random position in the upper canvas area
-      const x = 100 + Math.random() * 400;
-      const y = 100 + Math.random() * 200;
-      useVFXStore.getState().spawnHit(x, y);
     } else {
       rg.onMiss();
       useInputStore.getState().flashWrong(midi);
@@ -126,6 +134,12 @@ export function SettingsPanel({ open, onClose }: Props) {
     try { await refresh(); } finally { setRefreshing(false); }
   };
 
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   if (!open) return null;
 
   const colorModeOptions: { v: ColorMode; label: string }[] = [
@@ -135,8 +149,12 @@ export function SettingsPanel({ open, onClose }: Props) {
   ];
 
   return (
-    <div className="absolute right-0 top-0 z-20 flex h-full w-72 flex-col border-l border-bg-2 bg-bg-1/95 backdrop-blur">
-      <div className="flex items-center justify-between border-b border-bg-2 px-4 py-3">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm"
+      onClick={handleBackdropClick}
+    >
+      <div className="flex w-[min(92vw,360px)] max-h-[85vh] flex-col rounded-xl border border-bg-3 bg-bg-1 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-bg-2 px-4 py-3">
         <h2 className="text-sm font-semibold">{t("settings.title")}</h2>
         <Button variant="ghost" size="sm" onClick={onClose}>{t("settings.close")}</Button>
       </div>
@@ -293,6 +311,7 @@ export function SettingsPanel({ open, onClose }: Props) {
             </ul>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

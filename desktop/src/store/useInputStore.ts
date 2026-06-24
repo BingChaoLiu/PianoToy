@@ -10,6 +10,7 @@ export interface ActiveNote {
   velocity: number;
   startTime: number;  // performance.now()/1000
   source: NoteSource;
+  matchResult?: "hit" | "wrong";
 }
 
 export interface HistoryEntry {
@@ -29,6 +30,7 @@ interface InputState {
   onNoteOn: (midi: number, velocity: number, source: NoteSource) => void;
   onNoteOff: (midi: number) => void;
 
+  setMatchResult: (midi: number, kind: "hit" | "wrong") => void;
   flashWrong: (midi: number, durationSec?: number) => void;
   pruneWrongFlash: (now: number) => void;
   pruneHistory: (now: number, maxAgeSec?: number) => void;
@@ -67,6 +69,17 @@ export const useInputStore = create<InputState>((set, get) => ({
       return { active, history };
     });
     useRecordingStore.getState().recordEvent("off", midi, 0);
+  },
+
+  setMatchResult: (midi, kind) => {
+    set((s) => {
+      const active = new Map(s.active);
+      const note = active.get(midi);
+      if (note) {
+        active.set(midi, { ...note, matchResult: kind });
+      }
+      return { active };
+    });
   },
 
   flashWrong: (midi, durationSec = 0.6) => {

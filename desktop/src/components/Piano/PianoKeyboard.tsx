@@ -37,12 +37,17 @@ function drawPianoImpl({
     const i = whiteKeyIndex[m - FIRST_MIDI];
     const x = i * wk;
     const isActive = active.has(m);
+    const activeNote = active.get(m);
     const songNote = songSounding.get(m);
-    const wrong = wrongFlash.has(m);
+    const wrong = wrongFlash.has(m) || activeNote?.matchResult === "wrong";
+    const correct = activeNote?.matchResult === "hit";
     const grad = ctx.createLinearGradient(0, pianoTop, 0, pianoTop + pianoH);
     if (wrong) {
       grad.addColorStop(0, "#ff5555");
       grad.addColorStop(1, "#aa1f1f");
+    } else if (correct) {
+      grad.addColorStop(0, "#4ade80");
+      grad.addColorStop(1, "#16a34a");
     } else if (isActive) {
       const c = pianoKeyActiveColor(m, colorMode);
       grad.addColorStop(0, c);
@@ -78,12 +83,17 @@ function drawPianoImpl({
     if (!isBlack(m)) continue;
     const x = keyX[m - FIRST_MIDI] - bkW / 2;
     const isActive = active.has(m);
+    const activeNote = active.get(m);
     const songNote = songSounding.get(m);
-    const wrong = wrongFlash.has(m);
+    const wrong = wrongFlash.has(m) || activeNote?.matchResult === "wrong";
+    const correct = activeNote?.matchResult === "hit";
     const grad = ctx.createLinearGradient(0, pianoTop, 0, pianoTop + bkH);
     if (wrong) {
       grad.addColorStop(0, "#ff7a7a");
       grad.addColorStop(1, "#a02020");
+    } else if (correct) {
+      grad.addColorStop(0, "#6ee7b7");
+      grad.addColorStop(1, "#047857");
     } else if (isActive) {
       const c = pianoKeyActiveColor(m, colorMode);
       grad.addColorStop(0, shade(c, 15));

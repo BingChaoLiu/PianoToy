@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   createInitialState,
   spawnHitParticles,
+  spawnSustainedParticles,
   checkComboMilestone,
   triggerMissShake,
   tickEffects,
@@ -81,5 +82,15 @@ describe("visual-effects", () => {
     expect(s.particles[0].x).not.toBe(100);
     // Gravity should increase vy
     expect(s.particles[0].vy).toBeGreaterThan(origVy);
+  });
+
+  it("spawnSustainedParticles adds particles probabilistically", () => {
+    const s = createInitialState();
+    // Large dt ensures the probabilistic spawn triggers
+    spawnSustainedParticles(s, 100, 200, "#4ade80", 1.0);
+    expect(s.particles.length).toBeGreaterThan(0);
+    expect(s.particles[0].x).toBeCloseTo(100, -1); // x should be within 100 +/- 10
+    expect(s.particles[0].y).toBe(200);
+    expect(["#4ade80", "#ffffff", "#fffbeb"]).toContain(s.particles[0].color);
   });
 });

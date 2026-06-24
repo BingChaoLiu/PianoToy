@@ -59,6 +59,12 @@ export function SightReadingPanel({ open, onClose, onGenerate }: Props) {
     if (lastSeed != null) generate(lastSeed);
   };
 
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   if (!open) return null;
 
   const difficulties: { v: Difficulty; label: string }[] = [
@@ -68,8 +74,12 @@ export function SightReadingPanel({ open, onClose, onGenerate }: Props) {
   ];
 
   return (
-    <div className="absolute right-0 top-0 z-20 flex h-full w-72 flex-col border-l border-bg-2 bg-bg-1/95 backdrop-blur">
-      <div className="flex items-center justify-between border-b border-bg-2 px-4 py-3">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm"
+      onClick={handleBackdropClick}
+    >
+      <div className="flex w-[min(92vw,360px)] max-h-[85vh] flex-col rounded-xl border border-bg-3 bg-bg-1 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-bg-2 px-4 py-3">
         <h2 className="text-sm font-semibold">{t("sight.title")}</h2>
         <Button variant="ghost" size="sm" onClick={onClose}>{t("sight.close")}</Button>
       </div>
@@ -147,6 +157,7 @@ export function SightReadingPanel({ open, onClose, onGenerate }: Props) {
             {t("sight.redo")}
           </Button>
         </div>
+      </div>
       </div>
     </div>
   );

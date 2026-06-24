@@ -8,6 +8,7 @@ import { usePracticeStore } from "@/store/usePracticeStore";
 import { usePlaybackStore } from "@/store/usePlaybackStore";
 import { usePlaybackModeStore } from "@/store/usePlaybackModeStore";
 import { useSongStore } from "@/store/useSongStore";
+import { useVFXStore } from "@/store/useVFXStore";
 import { synthNoteOn, synthNoteOff } from "@/lib/synth";
 import { unlock } from "@/lib/audio-context";
 
@@ -21,7 +22,12 @@ function handlePractice(midi: number) {
   const songT = pb.currentSongTime(song);
   const hitWindow = useSettingsStore.getState().hitWindow;
   const result = practice.match(song, midi, songT, hitWindow);
-  if (result.kind === "wrong") {
+  
+  useInputStore.getState().setMatchResult(midi, result.kind);
+
+  if (result.kind === "hit") {
+    useVFXStore.getState().addHitEvent(midi);
+  } else {
     useInputStore.getState().flashWrong(midi);
   }
 }
