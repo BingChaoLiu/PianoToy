@@ -155,6 +155,19 @@ time: "Zeit",
     summary_title: "Leseergebnis",
     continue: "Weiter",
   },
+  updater: {
+    new_version: "Neue Version",
+    title: "Update verfügbar",
+    available_desc: "v{version} ist verfügbar, jetzt aktualisieren?",
+    update_now: "Jetzt aktualisieren",
+    later: "Später",
+    downloading: "Wird heruntergeladen…",
+    install_and_relaunch: "Installieren und neu starten",
+    download_page: "Download-Seite öffnen",
+    up_to_date: "Du bist auf dem neuesten Stand",
+    check_failed: "Update-Prüfung fehlgeschlagen",
+    installing: "Wird installiert…",
+  },
 };
 
 export default lang;

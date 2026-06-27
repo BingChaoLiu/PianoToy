@@ -155,6 +155,19 @@ time: "Temps",
     summary_title: "Résultat de lecture",
     continue: "Continuer",
   },
+  updater: {
+    new_version: "Nouvelle version",
+    title: "Mise à jour disponible",
+    available_desc: "v{version} est disponible, mettre à jour ?",
+    update_now: "Mettre à jour",
+    later: "Plus tard",
+    downloading: "Téléchargement…",
+    install_and_relaunch: "Installer et redémarrer",
+    download_page: "Ouvrir la page de téléchargement",
+    up_to_date: "Vous êtes à jour",
+    check_failed: "Échec de la vérification des mises à jour",
+    installing: "Installation…",
+  },
 };
 
 export default lang;

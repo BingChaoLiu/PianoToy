@@ -238,6 +238,19 @@ home: "\u30db\u30fc\u30e0",
     summary_title: "譜読みの結果",
     continue: "続ける",
   },
+  updater: {
+    new_version: "新バージョン",
+    title: "アップデートがあります",
+    available_desc: "v{version} が利用可能です。今すぐ更新しますか？",
+    update_now: "今すぐ更新",
+    later: "後で",
+    downloading: "ダウンロード中…",
+    install_and_relaunch: "インストールして再起動",
+    download_page: "ダウンロードページを開く",
+    up_to_date: "最新です",
+    check_failed: "更新の確認に失敗しました",
+    installing: "インストール中…",
+  },
 };
 
 export default lang;

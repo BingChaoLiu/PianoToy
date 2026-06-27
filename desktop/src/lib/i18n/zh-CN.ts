@@ -238,6 +238,19 @@ const lang: Translation = {
     summary_title: "\u8bc6\u8c31\u7ed3\u679c",
     continue: "\u7ee7\u7eed",
   },
+  updater: {
+    new_version: "\u65b0\u7248\u672c",
+    title: "\u53d1\u73b0\u65b0\u7248\u672c",
+    available_desc: "v{version} \u5df2\u53d1\u5e03\uff0c\u5efa\u8bae\u7acb\u5373\u66f4\u65b0",
+    update_now: "\u7acb\u5373\u66f4\u65b0",
+    later: "\u7a0d\u540e",
+    downloading: "\u4e0b\u8f7d\u4e2d\u2026",
+    install_and_relaunch: "\u5b89\u88c5\u5e76\u91cd\u542f",
+    download_page: "\u6253\u5f00\u4e0b\u8f7d\u9875",
+    up_to_date: "\u5df2\u662f\u6700\u65b0\u7248\u672c",
+    check_failed: "\u68c0\u67e5\u66f4\u65b0\u5931\u8d25",
+    installing: "\u5b89\u88c5\u4e2d\u2026",
+  },
 };
 
 export default lang;

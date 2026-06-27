@@ -25,3 +25,12 @@ temp/
 # AI assistant artifacts
 .claude/
 .codex/
+
+# Tauri updater signing keys (NEVER commit these)
+*.tauri.key
+pianotoy.key
+src-tauri/*.key
+
+# Tauri build output
+desktop/src-tauri/target/
+desktop/src-tauri/gen/

@@ -236,4 +236,17 @@ export interface Translation {
     summary_title: string;
     continue: string;
   };
+  updater: {
+    new_version: string;
+    title: string;
+    available_desc: string;
+    update_now: string;
+    later: string;
+    downloading: string;
+    install_and_relaunch: string;
+    download_page: string;
+    up_to_date: string;
+    check_failed: string;
+    installing: string;
+  };
 }

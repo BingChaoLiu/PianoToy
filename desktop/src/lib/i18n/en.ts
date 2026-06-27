@@ -238,6 +238,19 @@ const lang: Translation = {
     summary_title: "Reading Result",
     continue: "Continue",
   },
+  updater: {
+    new_version: "New Version",
+    title: "Update Available",
+    available_desc: "v{version} is available, update now?",
+    update_now: "Update Now",
+    later: "Later",
+    downloading: "Downloading\u2026",
+    install_and_relaunch: "Install and Relaunch",
+    download_page: "Open Download Page",
+    up_to_date: "You're up to date",
+    check_failed: "Failed to check for updates",
+    installing: "Installing\u2026",
+  },
 };
 
 export default lang;
