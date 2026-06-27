@@ -31,3 +31,13 @@ src-tauri/target
 *.njsproj
 *.sln
 *.sw?
+
+# Windows reserved device name artifacts
+nul
+src-tauri/nul
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Tauri build output (release bundles)
+src-tauri/gen/

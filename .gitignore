@@ -1,0 +1,27 @@
+# Root .gitignore — covers project-level artifacts not in sub-directories.
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Windows reserved device name artifacts (created accidentally by redirects)
+nul
+
+# Dev server runtime
+.server-port
+
+# Temporary directories
+temp/
+
+# Editor / IDE
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# AI assistant artifacts
+.claude/
+.codex/
