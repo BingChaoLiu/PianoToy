@@ -167,6 +167,8 @@ time: "Temps",
     up_to_date: "Vous êtes à jour",
     check_failed: "Échec de la vérification des mises à jour",
     installing: "Installation…",
+    check: "Rechercher des mises à jour",
+    checking: "Vérification…",
   },
 };
 

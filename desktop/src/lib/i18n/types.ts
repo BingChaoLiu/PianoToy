@@ -247,6 +247,8 @@ export interface Translation {
     download_page: string;
     up_to_date: string;
     check_failed: string;
-    installing: string;
-  };
+   installing: string;
+    check: string;
+    checking: string;
+ };
 }

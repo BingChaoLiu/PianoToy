@@ -250,6 +250,8 @@ const lang: Translation = {
     up_to_date: "\u5df2\u662f\u6700\u65b0\u7248\u672c",
     check_failed: "\u68c0\u67e5\u66f4\u65b0\u5931\u8d25",
     installing: "\u5b89\u88c5\u4e2d\u2026",
+    check: "\u68c0\u67e5\u66f4\u65b0",
+    checking: "\u68c0\u67e5\u4e2d\u2026",
   },
 };
 

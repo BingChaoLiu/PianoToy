@@ -250,6 +250,8 @@ const lang: Translation = {
     up_to_date: "You're up to date",
     check_failed: "Failed to check for updates",
     installing: "Installing\u2026",
+    check: "Check for Updates",
+    checking: "Checking\u2026",
   },
 };
 

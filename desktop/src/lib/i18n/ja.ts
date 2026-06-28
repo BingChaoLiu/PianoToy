@@ -250,6 +250,8 @@ home: "\u30db\u30fc\u30e0",
     up_to_date: "最新です",
     check_failed: "更新の確認に失敗しました",
     installing: "インストール中…",
+    check: "アップデートを確認",
+    checking: "確認中…",
   },
 };
 

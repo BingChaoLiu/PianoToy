@@ -167,6 +167,8 @@ time: "Zeit",
     up_to_date: "Du bist auf dem neuesten Stand",
     check_failed: "Update-Prüfung fehlgeschlagen",
     installing: "Wird installiert…",
+    check: "Nach Updates suchen",
+    checking: "Wird geprüft…",
   },
 };
 

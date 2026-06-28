@@ -167,6 +167,8 @@ time: "Tiempo",
     up_to_date: "Estás actualizado",
     check_failed: "Error al comprobar actualizaciones",
     installing: "Instalando…",
+    check: "Comprobar actualizaciones",
+    checking: "Comprobando…",
   },
 };
 

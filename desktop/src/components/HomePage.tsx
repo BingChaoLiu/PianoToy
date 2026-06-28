@@ -1,13 +1,13 @@
-// HomePage: app entry with three mode cards + rank display.
+// HomePage: app entry with mode cards + version footer.
 
 import { useEffect } from "react";
-import { Music, Piano, GraduationCap, BookOpen, Settings, Trophy, Music2, ArrowDownCircle } from "lucide-react";
+import { Music, Piano, GraduationCap, BookOpen, Settings, Music2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppModeStore } from "@/store/useAppModeStore";
-import { useRhythmGameStore, RANK_TIERS } from "@/store/useRhythmGameStore";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useUpdaterStore } from "@/store/useUpdaterStore";
 import { UpdateDialog } from "@/components/UpdateDialog";
+import { VersionFooter } from "@/components/VersionFooter";
 import { useT, LOCALES } from "@/lib/i18n";
 import type { AppMode } from "@/store/useAppModeStore";
 
@@ -90,29 +90,12 @@ const MODES: ModeCard[] = [
 export function HomePage({ onOpenSettings }: { onOpenSettings: () => void }) {
   const t = useT();
   const setMode = useAppModeStore((s) => s.setMode);
-  const totalPoints = useRhythmGameStore((s) => s.totalPoints);
-  const rankTier = useRhythmGameStore((s) => s.rankTier);
   const locale = useSettingsStore((s) => s.locale);
   const setLocale = useSettingsStore((s) => s.setLocale);
 
   // --- Update check on mount ---
-  const updateStatus = useUpdaterStore((s) => s.status);
-  const updateInfo = useUpdaterStore((s) => s.updateInfo);
   const checkUpdate = useUpdaterStore((s) => s.check);
-  const setDialogOpen = useUpdaterStore((s) => s.setDialogOpen);
-
-  useEffect(() => {
-    checkUpdate();
-  }, [checkUpdate]);
-
-  const hasUpdate = updateStatus === "available";
-
-  const currentRank = RANK_TIERS.find((r) => r.tier === rankTier);
-  const nextIdx = RANK_TIERS.findIndex((r) => r.tier === rankTier) + 1;
-  const nextRank = nextIdx < RANK_TIERS.length ? RANK_TIERS[nextIdx] : null;
-  const progressToNext = nextRank
-    ? ((totalPoints - (currentRank?.threshold ?? 0)) / (nextRank.threshold - (currentRank?.threshold ?? 0))) * 100
-    : 100;
+  useEffect(() => { checkUpdate(); }, [checkUpdate]);
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -132,20 +115,6 @@ export function HomePage({ onOpenSettings }: { onOpenSettings: () => void }) {
               <option key={opt.code} value={opt.code}>{opt.nativeName}</option>
             ))}
           </select>
-          {/* Update badge: shown only when a new version is available */}
-          {hasUpdate && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="relative gap-1 text-accent"
-              onClick={() => setDialogOpen(true)}
-              title={t("updater.new_version") + " v" + (updateInfo?.version ?? "")}
-            >
-              <ArrowDownCircle className="h-4 w-4" />
-              <span className="text-xs">{t("updater.new_version")}</span>
-              <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-accent" />
-            </Button>
-          )}
           <Button variant="ghost" size="icon" onClick={onOpenSettings} title={t("header.settings_tip")}>
             <Settings className="h-4 w-4" />
           </Button>
@@ -153,29 +122,6 @@ export function HomePage({ onOpenSettings }: { onOpenSettings: () => void }) {
       </header>
 
       <div className="flex flex-1 flex-col items-center justify-center gap-8 px-6">
-        <div className="flex items-center gap-4 rounded-lg border border-bg-2 bg-bg-1 px-5 py-3">
-          <Trophy className="h-5 w-5 text-accent" />
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold text-fg">
-              {t("home.rank")}: {currentRank?.label ?? "Beginner"}
-            </span>
-            <span className="text-xs text-muted">
-              {t("home.total_points")}: {totalPoints.toLocaleString()}
-            </span>
-          </div>
-          {nextRank && (
-            <div className="ml-4 flex flex-col">
-              <span className="text-xs text-muted">{t("home.next_rank")}: {nextRank.label}</span>
-              <div className="mt-1 h-1.5 w-24 overflow-hidden rounded-full bg-bg-3">
-                <div
-                  className="h-full rounded-full bg-accent transition-all"
-                  style={{ width: Math.min(100, progressToNext) + "%" }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
         <div className="grid grid-cols-2 gap-6 sm:grid-cols-4" style={{ maxWidth: 940 }}>
           {MODES.map((m) => (
             <button
@@ -200,8 +146,9 @@ export function HomePage({ onOpenSettings }: { onOpenSettings: () => void }) {
         </div>
       </div>
 
-      <footer className="border-t border-bg-2 px-6 py-2 text-center text-xs text-muted">
-        {t("home.footer")}
+      <footer className="flex items-center justify-between border-t border-bg-2 px-6 py-2">
+        <span className="text-xs text-muted">{t("home.footer")}</span>
+        <VersionFooter />
       </footer>
 
       {/* Update dialog */}
