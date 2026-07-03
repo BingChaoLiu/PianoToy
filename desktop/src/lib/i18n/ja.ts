@@ -246,6 +246,9 @@ home: "\u30db\u30fc\u30e0",
     installing: "インストール中…",
     check: "アップデートを確認",
     checking: "確認中…",
+    downloading_progress: "ダウンロード中… {pct}%",
+    auto_unavailable_browser: "Web/開発プレビューでは自動更新できません。インストーラーをダウンロードして更新してください。",
+    auto_unavailable_error: "アプリ内アップデーターを自動で開始できませんでした。インストーラーを手動でダウンロードできます。",
   },
 };
 

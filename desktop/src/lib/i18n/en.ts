@@ -246,6 +246,9 @@ const lang: Translation = {
     installing: "Installing\u2026",
     check: "Check for Updates",
     checking: "Checking\u2026",
+    downloading_progress: "Downloading\u2026 {pct}%",
+    auto_unavailable_browser: "Auto-update isn't available in the web/dev preview. Download and run the installer to update.",
+    auto_unavailable_error: "The in-app updater couldn't start automatically. You can still download the installer manually.",
   },
 };
 

@@ -244,5 +244,8 @@ export interface Translation {
    installing: string;
     check: string;
     checking: string;
- };
+    downloading_progress: string;
+    auto_unavailable_browser: string;
+    auto_unavailable_error: string;
+  };
 }

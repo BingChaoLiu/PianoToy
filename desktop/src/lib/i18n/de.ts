@@ -163,6 +163,9 @@ time: "Zeit",
     installing: "Wird installiert…",
     check: "Nach Updates suchen",
     checking: "Wird geprüft…",
+    downloading_progress: "Wird heruntergeladen… {pct}%",
+    auto_unavailable_browser: "Auto-Update ist in der Web-/Entwicklungsvorschau nicht verfügbar. Lade das Installationsprogramm herunter und führe es aus.",
+    auto_unavailable_error: "Der In-App-Updater konnte nicht automatisch starten. Du kannst das Installationsprogramm manuell herunterladen.",
   },
 };
 

@@ -14,9 +14,13 @@ export interface UpdateInfo {
   /** Release notes (markdown body from GitHub). */
   notes: string | null;
   /** Download + install function (only in Tauri production builds). */
-  downloadAndInstall: (() => Promise<void>) | null;
+  downloadAndInstall: ((onProgress?: (downloaded: number, total: number) => void) => Promise<void>) | null;
   /** Error message if the check failed. */
   error: string | null;
+  /** Where the check ran. "tauri" = production app, "browser" = dev/web. */
+  environment: "tauri" | "browser";
+  /** Direct download URL for the platform installer (NSIS .exe), when known. */
+  downloadUrl: string | null;
 }
 
 /** GitHub owner/repo for release lookups. */
@@ -49,6 +53,8 @@ const NO_UPDATE: UpdateInfo = {
   notes: null,
   downloadAndInstall: null,
   error: null,
+  environment: "browser",
+  downloadUrl: null,
 };
 
 /**
@@ -56,9 +62,16 @@ const NO_UPDATE: UpdateInfo = {
  * falls back to GitHub API (dev/browser). Never throws.
  */
 export async function checkForUpdate(): Promise<UpdateInfo> {
+  const isTauri =
+    typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+  // Track a Tauri-plugin failure so we can surface it instead of silently
+  // degrading to the browser fallback (which hides real production bugs).
+  let tauriError: string | null = null;
+
   // --- Path 1: Tauri updater plugin (production desktop app) ---
-  try {
-    if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+  if (isTauri) {
+    try {
       const { check } = await import("@tauri-apps/plugin-updater");
       const update = await check();
       if (update) {
@@ -67,11 +80,15 @@ export async function checkForUpdate(): Promise<UpdateInfo> {
           version: update.version,
           date: update.date ?? null,
           notes: update.body ?? null,
-          downloadAndInstall: async () => {
+          downloadAndInstall: async (onProgress) => {
             await update.downloadAndInstall((event) => {
               switch (event.event) {
                 case "Started":
+                  if (onProgress) onProgress(0, event.data.contentLength ?? 0);
+                  break;
                 case "Progress":
+                  if (onProgress) onProgress(event.data.chunkLength ?? 0, 0);
+                  break;
                 case "Finished":
                   break;
               }
@@ -81,12 +98,20 @@ export async function checkForUpdate(): Promise<UpdateInfo> {
             await relaunch();
           },
           error: null,
+          environment: "tauri",
+          downloadUrl: null,
         };
       }
-      return NO_UPDATE;
+      return { ...NO_UPDATE, environment: "tauri" };
+    } catch (err) {
+      // Don't swallow this silently: a failure here means the production
+      // auto-updater is broken, and hiding it makes the dialog fall back to a
+      // plain "download page" with no clue why. Record the reason and continue
+      // to the GitHub check so the badge still works.
+      const msg = err instanceof Error ? err.message : String(err);
+      tauriError = msg;
+      console.error("[updater] Tauri plugin check failed, falling back to GitHub API", err);
     }
-  } catch {
-    // Fall through to GitHub API fallback.
   }
 
   // --- Path 2: GitHub API fallback (dev/browser, or plugin unavailable) ---
@@ -96,25 +121,49 @@ export async function checkForUpdate(): Promise<UpdateInfo> {
       { headers: { Accept: "application/vnd.github+json" } },
     );
     if (!resp.ok) {
-      return { ...NO_UPDATE, error: `GitHub API ${resp.status}` };
+      return { ...NO_UPDATE, environment: isTauri ? "tauri" : "browser", error: `GitHub API ${resp.status}` };
     }
     const data = await resp.json();
     const remoteVersion = (data.tag_name ?? "").replace(/^v/, "");
     if (!remoteVersion || !isNewerVersion(APP_VERSION, remoteVersion)) {
-      return NO_UPDATE;
+      return { ...NO_UPDATE, environment: isTauri ? "tauri" : "browser" };
     }
+    // Find the Windows NSIS installer asset so the dialog can offer a direct
+    // download even when auto-install isn't possible (dev/browser or a Tauri
+    // plugin error). Prefer the *_x64-setup.exe asset for this platform.
+    const installerUrl = pickInstallerUrl(data.assets ?? []);
     return {
       available: true,
       version: remoteVersion,
       date: data.published_at ?? null,
       notes: data.body ?? null,
-      // Browser fallback: can't auto-install, so downloadAndInstall is null.
-      // The UI will show a "open download page" button instead.
       downloadAndInstall: null,
-      error: null,
+      // Browser/dev can't auto-install; if we got here from a Tauri failure,
+      // surface that reason so the user knows auto-update is unavailable.
+      error: tauriError,
+      environment: isTauri ? "tauri" : "browser",
+      downloadUrl: installerUrl,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { ...NO_UPDATE, error: msg };
+    return { ...NO_UPDATE, environment: isTauri ? "tauri" : "browser", error: tauriError ?? msg };
   }
+}
+
+/**
+ * Pick the direct download URL for the Windows x64 NSIS installer from a
+ * GitHub release's asset list. Returns null if no matching asset is found.
+ */
+export function pickInstallerUrl(
+  assets: Array<{ name?: string; browser_download_url?: string }>,
+): string | null {
+  const setupSuffix = "_x64-setup.exe";
+  const exact = assets.find(
+    (a) => typeof a.name === "string" && a.name.endsWith(setupSuffix),
+  );
+  if (exact?.browser_download_url) return exact.browser_download_url;
+  const anyExe = assets.find(
+    (a) => typeof a.name === "string" && a.name.endsWith(".exe"),
+  );
+  return anyExe?.browser_download_url ?? null;
 }

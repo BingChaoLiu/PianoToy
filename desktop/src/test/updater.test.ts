@@ -1,5 +1,34 @@
 import { describe, it, expect } from "vitest";
-import { isNewerVersion } from "@/lib/updater";
+import { isNewerVersion, pickInstallerUrl } from "@/lib/updater";
+
+describe("pickInstallerUrl", () => {
+  it("prefers the NSIS x64 setup exe", () => {
+    const assets = [
+      { name: "latest.json", browser_download_url: "u/json" },
+      { name: "piano-visualizer_0.1.5_x64-setup.exe", browser_download_url: "u/exe" },
+      { name: "piano-visualizer_0.1.5_x64_en-US.msi", browser_download_url: "u/msi" },
+    ];
+    expect(pickInstallerUrl(assets)).toBe("u/exe");
+  });
+
+  it("returns null when there is no exe asset", () => {
+    const assets = [
+      { name: "latest.json", browser_download_url: "u/json" },
+      { name: "song.mid", browser_download_url: "u/mid" },
+    ];
+    expect(pickInstallerUrl(assets)).toBeNull();
+  });
+
+  it("falls back to any .exe when no setup asset exists", () => {
+    const assets = [{ name: "helper.exe", browser_download_url: "u/helper" }];
+    expect(pickInstallerUrl(assets)).toBe("u/helper");
+  });
+
+  it("ignores assets without a download url", () => {
+    const assets = [{ name: "piano-visualizer_0.1.5_x64-setup.exe" }];
+    expect(pickInstallerUrl(assets)).toBeNull();
+  });
+});
 
 describe("isNewerVersion", () => {
   it("detects a higher minor version", () => {

@@ -163,6 +163,9 @@ time: "Tiempo",
     installing: "Instalando…",
     check: "Comprobar actualizaciones",
     checking: "Comprobando…",
+    downloading_progress: "Descargando… {pct}%",
+    auto_unavailable_browser: "La actualización automática no está disponible en la vista previa web/desarrollo. Descarga y ejecuta el instalador para actualizar.",
+    auto_unavailable_error: "El actualizador integrado no pudo iniciarse automáticamente. Aún puedes descargar el instalador manualmente.",
   },
 };
 

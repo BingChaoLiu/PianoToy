@@ -163,6 +163,9 @@ time: "Temps",
     installing: "Installation…",
     check: "Rechercher des mises à jour",
     checking: "Vérification…",
+    downloading_progress: "Téléchargement… {pct}%",
+    auto_unavailable_browser: "La mise à jour automatique n'est pas disponible dans l'aperçu web/dev. Téléchargez et lancez l'installateur pour mettre à jour.",
+    auto_unavailable_error: "Le module de mise à jour n'a pas pu démarrer automatiquement. Vous pouvez toujours télécharger l'installateur manuellement.",
   },
 };
 
