@@ -1,9 +1,9 @@
-// Score view mode: waterfall (falling notes) vs staff (sheet music scroll) vs pdf.
+// Score view mode: waterfall (falling notes) vs score (Verovio sheet music).
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type ScoreViewMode = "waterfall" | "staff" | "pdf";
+export type ScoreViewMode = "waterfall" | "score";
 
 interface ScoreViewState {
   mode: ScoreViewMode;
@@ -18,7 +18,16 @@ export const useScoreViewStore = create<ScoreViewState>()(
     }),
     {
       name: "piano.score-view",
-      version: 1,
+      version: 3,
+      // Older builds persisted "staff" or "pdf" modes that no longer exist;
+      // fall back to "waterfall" so a stale value never lands in an invalid state.
+      migrate: (persisted: unknown, fromVersion: number) => {
+        const m = (persisted as { mode?: string } | null)?.mode;
+        if (fromVersion < 3 || (m !== "waterfall" && m !== "score")) {
+          return { mode: "waterfall" } as ScoreViewState;
+        }
+        return persisted as ScoreViewState;
+      },
     },
   ),
 );

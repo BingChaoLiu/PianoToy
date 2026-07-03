@@ -15,11 +15,9 @@ import { useAppModeStore } from "@/store/useAppModeStore";
 import { useRhythmGameStore } from "@/store/useRhythmGameStore";
 import { useScorePracticeStore } from "@/store/useScorePracticeStore";
 import { useScoreViewStore } from "@/store/useScoreViewStore";
-import { useSightReadingStore } from "@/store/useSightReadingStore";
 import { useVFXStore } from "@/store/useVFXStore";
 import { usePlaybackModeStore } from "@/store/usePlaybackModeStore";
 import { tickEffects, renderEffects, type VisualEffectsState } from "@/lib/visual-effects";
-import { drawStaffView } from "@/lib/staff-renderer";
 import { FIRST_MIDI, MIDDLE_C, isBlack } from "@/lib/note-utils";
 import { trackColor, pianoKeyActiveColor } from "@/lib/color";
 
@@ -109,9 +107,7 @@ export function Stage() {
           });
         }
 
-        // 4) Playback scheduling must keep running in every view mode (incl. pdf)
-        // so audio + PDF scroll stay in sync. Only the canvas drawing is skipped
-        // in pdf mode — PdfScoreView renders the score as an overlay instead.
+        // 4) Playback scheduling must keep running regardless of view mode.
         if (pb.isPlaying && song) {
           const mode = useAppModeStore.getState().mode;
           const listenOnly = usePlaybackModeStore.getState().listenOnly;
@@ -122,9 +118,21 @@ export function Stage() {
           schedulePlayback(song, pb, demoAudio, settings.synthEnabled);
         }
 
-        // PDF view: no falling notes / hit detection / piano canvas. Keep the
-        // RAF alive (playback + PdfScoreView scroll continue) but skip drawing.
-        if (viewMode === "pdf") {
+        // Score (Verovio) view: the engraved sheet music is rendered by the
+        // <ScoreView> overlay. We still must run miss detection here so the
+        // challenge-mode HUD/HP keep working, then skip all canvas drawing.
+        if (viewMode === "score") {
+          if (practiceStore.enabled && song) {
+            const prevMissed = practiceStore.stats.missed;
+            practiceStore.tickMissed(song, songT, settings.hitWindow);
+            const scoreMode = useScorePracticeStore.getState().mode;
+            const isRhythm = mode === "random-practice" || (mode === "score-practice" && scoreMode === "challenge");
+            if (isRhythm && practiceStore.stats.missed > prevMissed) {
+              const rg = useRhythmGameStore.getState();
+              const newMissCount = practiceStore.stats.missed - prevMissed;
+              for (let i = 0; i < newMissCount; i++) rg.onMiss();
+            }
+          }
           input.pruneWrongFlash(now);
           input.pruneHistory(now);
           raf = requestAnimationFrame(loop);
@@ -136,12 +144,8 @@ export function Stage() {
         const pianoTop = layout.height - layout.pianoHeight;
         const waterBottom = pianoTop;
 
-        // 1) Grid or staff background
-        if (viewMode === "staff") {
-          // Staff view: skip grid, staff renderer draws its own background
-        } else {
-          drawGrid({ ctx, layout, waterBottom });
-        }
+        // 1) Grid background
+        drawGrid({ ctx, layout, waterBottom });
 
         if (practiceStore.enabled && song) {
           const prevMissed = practiceStore.stats.missed;
@@ -157,32 +161,20 @@ export function Stage() {
           }
         }
 
-        // 5+6) Song notes: waterfall or staff view
-        if (viewMode === "staff") {
-          // Staff notation view
-          const sr = useSightReadingStore.getState();
-          drawStaffView({
-            ctx, layout, pianoTop,
-            song, songT,
-            practice: practiceStore.enabled,
-            bpm: sr.bpm,
-          });
-        } else {
-          // Waterfall (falling notes) view
-          drawSong({
-            ctx, layout, pianoTop, waterBottom,
-            pxPerSec: PX_PER_SEC,
-            song, songT,
-            practice: practiceStore.enabled, colorMode: settings.colorMode,
-            showLabels: settings.showLabels,
-          });
-          drawHistory({
-            ctx, layout, waterBottom,
-            pxPerSec: PX_PER_SEC, now,
-            history: input.history, colorMode: settings.colorMode,
-            showLabels: settings.showLabels, practice: mode !== "free",
-          });
-        }
+        // 5+6) Waterfall (falling notes) — the score view returns early above.
+        drawSong({
+          ctx, layout, pianoTop, waterBottom,
+          pxPerSec: PX_PER_SEC,
+          song, songT,
+          practice: practiceStore.enabled, colorMode: settings.colorMode,
+          showLabels: settings.showLabels,
+        });
+        drawHistory({
+          ctx, layout, waterBottom,
+          pxPerSec: PX_PER_SEC, now,
+          history: input.history, colorMode: settings.colorMode,
+          showLabels: settings.showLabels, practice: mode !== "free",
+        });
 
         // 7) Song sounding keys
         const songSounding = new Map<number, { midi: number; track?: number }>();

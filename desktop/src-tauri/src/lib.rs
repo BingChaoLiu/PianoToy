@@ -87,7 +87,9 @@ fn safe_join(root: &std::path::Path, folder: &str) -> Result<PathBuf, String> {
 }
 
 /// Scan the scores root, returning the raw meta.json contents of every valid folder.
-/// Folders without a valid meta.json or missing song.mid are skipped (not fatal).
+/// A folder is valid when it has a meta.json AND at least one playable source file:
+/// either song.mid (MIDI imports) or score.musicxml (MusicXML imports). Folders
+/// without a valid meta.json or any source file are skipped (not fatal).
 #[tauri::command]
 fn list_score_folders(app: tauri::AppHandle) -> Result<Vec<String>, String> {
     let root = scores_root(&app)?;
@@ -111,8 +113,10 @@ fn list_score_folders(app: tauri::AppHandle) -> Result<Vec<String>, String> {
             continue;
         }
         let meta_path = dir.join("meta.json");
-        let song_path = dir.join("song.mid");
-        if !meta_path.exists() || !song_path.exists() {
+        let midi_path = dir.join("song.mid");
+        let musicxml_path = dir.join("score.musicxml");
+        let has_source = midi_path.exists() || musicxml_path.exists();
+        if !meta_path.exists() || !has_source {
             continue;
         }
         match fs::read_to_string(&meta_path) {
@@ -123,7 +127,7 @@ fn list_score_folders(app: tauri::AppHandle) -> Result<Vec<String>, String> {
     Ok(out)
 }
 
-/// Delete an entire score folder (song.mid, score.pdf, meta.json).
+/// Delete an entire score folder (song.mid, score.musicxml, meta.json).
 #[tauri::command]
 fn delete_score_folder(app: tauri::AppHandle, folder: String) -> Result<(), String> {
     let root = scores_root(&app)?;

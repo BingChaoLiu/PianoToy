@@ -27,12 +27,12 @@
         "clsx": "^2.1.1",
         "immer": "^11.1.8",
         "lucide-react": "^1.17.0",
-        "pdfjs-dist": "^6.0.227",
         "react": "^19.2.6",
         "react-dom": "^19.2.6",
         "smplr": "^0.26.0",
         "sonner": "^2.0.7",
         "tailwind-merge": "^3.6.0",
+        "verovio": "^6.2.0",
         "zustand": "^5.0.14"
     },
     "devDependencies": {

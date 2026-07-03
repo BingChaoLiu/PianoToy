@@ -64,11 +64,9 @@ vi.mock("@/lib/smf-parser", () => ({
 // A shared mock backend to observe side effects.
 const mockBackend = {
   writeMidi: vi.fn().mockResolvedValue(undefined),
-  writePdf: vi.fn(),
   writeMeta: vi.fn().mockResolvedValue(undefined),
   readMeta: vi.fn(),
   readMidi: vi.fn(),
-  readPdf: vi.fn(),
   deleteScoreFolder: vi.fn(),
   getScoresRoot: vi.fn().mockResolvedValue("/root/scores"),
 };

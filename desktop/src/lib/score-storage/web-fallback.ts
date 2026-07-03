@@ -5,7 +5,7 @@
 import {
   type ScoreMeta,
   MIDI_FILENAME,
-  PDF_FILENAME,
+  MUSICXML_FILENAME,
   META_FILENAME,
 } from "./types";
 
@@ -94,8 +94,8 @@ export const webFallback = {
   async writeMidi(folder: string, bytes: Uint8Array): Promise<void> {
     await put(folder, MIDI_FILENAME, bytes);
   },
-  async writePdf(folder: string, bytes: Uint8Array): Promise<void> {
-    await put(folder, PDF_FILENAME, bytes);
+  async writeMusicXml(folder: string, bytes: Uint8Array): Promise<void> {
+    await put(folder, MUSICXML_FILENAME, bytes);
   },
   async writeMeta(folder: string, meta: ScoreMeta): Promise<void> {
     await put(folder, META_FILENAME, JSON.stringify(meta));
@@ -113,8 +113,8 @@ export const webFallback = {
     const raw = await getRaw(folder, MIDI_FILENAME);
     return raw instanceof Uint8Array ? raw : null;
   },
-  async readPdf(folder: string): Promise<Uint8Array | null> {
-    const raw = await getRaw(folder, PDF_FILENAME);
+  async readMusicXml(folder: string): Promise<Uint8Array | null> {
+    const raw = await getRaw(folder, MUSICXML_FILENAME);
     return raw instanceof Uint8Array ? raw : null;
   },
   async listScoreFoldersRaw(): Promise<string[]> {

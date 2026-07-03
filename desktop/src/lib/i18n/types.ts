@@ -188,8 +188,13 @@ export interface Translation {
   };
   view_mode: {
     waterfall: string;
-    staff: string;
-    pdf: string;
+    score: string;
+  };
+  score_view: {
+    loading: string;
+    no_score: string;
+    load_failed: string;
+    back_to_waterfall: string;
   };
   score_delete: {
     confirm: string;
@@ -205,9 +210,6 @@ export interface Translation {
     title: string;
     midi_zone: string;
     midi_zone_hint: string;
-    pdf_zone: string;
-    pdf_zone_hint: string;
-    pdf_optional: string;
     name_label: string;
     cancel: string;
     confirm: string;
@@ -215,14 +217,6 @@ export interface Translation {
     release_to_drop: string;
     file_too_large: string;
     midi_required: string;
-    pdf_required: string;
-  };
-  pdf_view: {
-    edit_anchors: string;
-    add_anchor_here: string;
-    use_current_time: string;
-    no_pdf: string;
-    loading: string;
   };
   reading: {
     mode_label: string;

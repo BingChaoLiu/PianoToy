@@ -190,8 +190,13 @@ const lang: Translation = {
   },
   view_mode: {
     waterfall: "\u4e0b\u843d",
-    staff: "\u4e94\u7ebf\u8c31",
-    pdf: "PDF \u66f2\u8c31",
+    score: "\u66f2\u8c31",
+  },
+  score_view: {
+    loading: "正在加载曲谱…",
+    no_score: "该曲目没有 MusicXML 曲谱源。",
+    load_failed: "无法加载曲谱。",
+    back_to_waterfall: "返回下落视图",
   },
   score_delete: {
     confirm: "\u786e\u5b9a\u5220\u9664\u8fd9\u9996\u66f2\u76ee\u5417\uff1f",
@@ -206,10 +211,7 @@ const lang: Translation = {
   import_dialog: {
     title: "\u5bfc\u5165\u4e50\u8c31",
     midi_zone: "MIDI \u6587\u4ef6",
-    midi_zone_hint: "\u62d6\u5165\u6216\u70b9\u51fb\u9009\u62e9 .mid / .midi\uff08\u5fc5\u586b\uff09",
-    pdf_zone: "PDF \u66f2\u8c31\uff08\u53ef\u9009\uff09",
-    pdf_zone_hint: "\u62d6\u5165\u6216\u70b9\u51fb\u9009\u62e9 .pdf",
-    pdf_optional: "\u53ef\u9009",
+    midi_zone_hint: "\u62d6\u5165\u6216\u70b9\u51fb\u9009\u62e9 .mid / .midi / .musicxml\uff08\u5fc5\u586b\uff09",
     name_label: "\u66f2\u540d",
     cancel: "\u53d6\u6d88",
     confirm: "\u5bfc\u5165",
@@ -217,14 +219,6 @@ const lang: Translation = {
     release_to_drop: "\u677e\u5f00\u5bfc\u5165",
     file_too_large: "\u6587\u4ef6\u8fc7\u5927",
     midi_required: "\u8bf7\u9009\u62e9 MIDI \u6587\u4ef6",
-    pdf_required: "\u8bf7\u9009\u62e9 PDF \u6587\u4ef6",
-  },
-  pdf_view: {
-    edit_anchors: "\u7f16\u8f91\u951a\u70b9",
-    add_anchor_here: "\u5728\u6b64\u6dfb\u52a0\u951a\u70b9",
-    use_current_time: "\u4f7f\u7528\u5f53\u524d\u64ad\u653e\u65f6\u95f4",
-    no_pdf: "\u8be5\u66f2\u76ee\u6ca1\u6709 PDF \u66f2\u8c31",
-    loading: "\u52a0\u8f7d\u4e2d\u2026",
   },
   reading: {
     mode_label: "\u8bc6\u8c31\u7ec3\u4e60",

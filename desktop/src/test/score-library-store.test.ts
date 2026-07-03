@@ -3,15 +3,14 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 vi.mock("@/lib/score-storage", () => ({
   listScores: vi.fn().mockResolvedValue([
     {
-      schemaVersion: 1, id: "1-a", name: "A", composer: "", difficulty: "easy",
-      category: "custom", midiFile: "song.mid", hasPdf: false,
+      schemaVersion: 3, id: "1-a", name: "A", composer: "", difficulty: "easy",
+      category: "custom", midiFile: "song.mid", sourceFormat: "midi",
       duration: 10, noteCount: 1, tempo: 100, timeSignature: "4/4", addedAt: 1,
     },
     {
-      schemaVersion: 1, id: "2-b", name: "B", composer: "", difficulty: "hard",
-      category: "custom", midiFile: "song.mid", hasPdf: true, pdfFile: "score.pdf",
+      schemaVersion: 3, id: "2-b", name: "B", composer: "", difficulty: "hard",
+      category: "custom", midiFile: "song.mid", sourceFormat: "musicxml", musicXmlFile: "score.musicxml",
       duration: 20, noteCount: 2, tempo: 100, timeSignature: "4/4", addedAt: 2,
-      pdfScroll: { mode: "follow", scrollableHeight: 0, anchors: [] },
     },
   ]),
 }));
@@ -30,8 +29,11 @@ describe("useScoreLibraryStore", () => {
     expect(customScores).toHaveLength(2);
     expect(customScores[0]).toMatchObject({
       id: "1-a", name: "A", category: "custom", build: null, filePath: null,
+      sourceFormat: "midi", hasMusicXml: false,
     });
-    expect(customScores[1].hasPdf).toBe(true);
+    expect(customScores[1]).toMatchObject({
+      id: "2-b", sourceFormat: "musicxml", hasMusicXml: true,
+    });
     expect(useScoreLibraryStore.getState().loaded).toBe(true);
   });
 

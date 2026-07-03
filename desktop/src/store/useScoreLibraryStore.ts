@@ -6,6 +6,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Song } from "@/types/midi";
 import { listScores } from "@/lib/score-storage";
+import type { ScoreSourceFormat } from "@/lib/score-storage";
 
 export type ScoreDifficulty = "easy" | "medium" | "hard";
 
@@ -29,8 +30,10 @@ export interface ScoreEntry {
   build: (() => Song) | null;
   /** MIDI file path relative to public/ (for public domain pieces) */
   filePath: string | null;
-  /** True if the score has an accompanying PDF (file-system scores only). */
-  hasPdf?: boolean;
+  /** Source format for file-based scores (custom imports). Built-in songs omit it. */
+  sourceFormat?: ScoreSourceFormat;
+  /** True when the score has an accompanying MusicXML engraving source. */
+  hasMusicXml?: boolean;
 }
 
 interface ScoreLibraryState {
@@ -60,7 +63,8 @@ export const useScoreLibraryStore = create<ScoreLibraryState>()(
             category: "custom",
             build: null,
             filePath: null,
-            hasPdf: !!m.hasPdf,
+            sourceFormat: m.sourceFormat,
+            hasMusicXml: m.sourceFormat === "musicxml",
           }));
           set({ customScores: entries, loaded: true });
         } catch (err) {

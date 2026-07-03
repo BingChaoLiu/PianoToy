@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n";
 import { SCORE_CATALOG } from "@/lib/songs/catalog";
 import { useScoreLibraryStore } from "@/store/useScoreLibraryStore";
+import type { ScoreEntry } from "@/store/useScoreLibraryStore";
 import { useSongStore } from "@/store/useSongStore";
 import { usePracticeStore } from "@/store/usePracticeStore";
 import { useRhythmGameStore } from "@/store/useRhythmGameStore";
 import { usePlaybackStore } from "@/store/usePlaybackStore";
-import { parseSmf } from "@/lib/smf-parser";
+import { parseScore, type ScoreSourceFormat } from "@/lib/score-parser";
+import { loadScoreMidi, loadScoreMusicXml } from "@/lib/score-storage";
 import { loadMidi } from "@/lib/midi-storage";
 import { toast } from "sonner";
 
@@ -36,21 +38,29 @@ export function SongSwitcher({ open, onClose, onSongSwitched }: Props) {
         if (!resp.ok) throw new Error("HTTP " + resp.status);
         const ab = await resp.arrayBuffer();
         const bytes = new Uint8Array(ab);
-        song = parseSmf(bytes);
+        song = await parseScore(bytes, "midi");
         song.name = entry.name;
       } catch (err) {
         toast.error(t("toast.load_failed", { msg: String(err) }));
         return;
       }
     } else {
-      // Custom imported MIDI: load raw bytes from storage
+      // Custom imported score: dispatch on source format (mirror ScoreLibraryPage).
       try {
-        const bytes = await loadMidi(entry.id);
+        const fmt: ScoreSourceFormat =
+          (entry as ScoreEntry).sourceFormat === "musicxml" ? "musicxml" : "midi";
+        let bytes: Uint8Array | null = null;
+        if (fmt === "musicxml") {
+          bytes = await loadScoreMusicXml(entry.id);
+        } else {
+          bytes = await loadScoreMidi(entry.id);
+          if (!bytes) bytes = await loadMidi(entry.id);
+        }
         if (!bytes) {
           toast.error(t("toast.load_failed", { msg: "file not found" }));
           return;
         }
-        song = parseSmf(bytes);
+        song = await parseScore(bytes, fmt);
         song.name = entry.name;
       } catch (err) {
         toast.error(t("toast.load_failed", { msg: String(err) }));

@@ -1,20 +1,7 @@
 // Types for the file-system-backed score storage.
 
-export interface PdfAnchor {
-  /** MIDI playback time in seconds. */
-  songTime: number;
-  /** PDF y coordinate in pixels (relative to the top of the rendered PDF). */
-  pdfY: number;
-}
-
-export interface PdfScrollConfig {
-  /** Currently always "follow" (synced to MIDI time). Reserved for future modes. */
-  mode: "follow";
-  /** Total scrollable PDF height in pixels, measured on first open. */
-  scrollableHeight: number;
-  /** Sorted anchors; empty array means "not yet generated". */
-  anchors: PdfAnchor[];
-}
+/** How a score was imported. Determines parse path on load. */
+export type ScoreSourceFormat = "midi" | "musicxml";
 
 /** Raw shape of meta.json on disk. */
 export interface ScoreMeta {
@@ -25,19 +12,20 @@ export interface ScoreMeta {
   difficulty: string;
   category: "custom";
   midiFile: string;
-  pdfFile?: string;
-  hasPdf: boolean;
   duration: number;
   noteCount: number;
   tempo: number;
   timeSignature: string;
   addedAt: number;
-  pdfScroll?: PdfScrollConfig;
+  /** Source format. Older metas (pre-schema v3) default to "midi". */
+  sourceFormat?: ScoreSourceFormat;
+  /** Present only when sourceFormat is "musicxml" (the engraving source). */
+  musicXmlFile?: string;
 }
 
-export const META_SCHEMA_VERSION = 1;
+export const META_SCHEMA_VERSION = 3;
 
 export const MIDI_FILENAME = "song.mid";
-export const PDF_FILENAME = "score.pdf";
+export const MUSICXML_FILENAME = "score.musicxml";
 export const META_FILENAME = "meta.json";
 export const MIGRATED_MARKER = ".migrated";

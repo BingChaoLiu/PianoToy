@@ -9,9 +9,9 @@ import { useScoreLibraryPrefsStore } from "@/store/useScoreLibraryPrefsStore";
 import { useSongStore } from "@/store/useSongStore";
 import { useT } from "@/lib/i18n";
 import { SCORE_CATALOG, CATEGORIES, DIFFICULTIES } from "@/lib/songs/catalog";
-import { parseSmf } from "@/lib/smf-parser";
+import { parseScore, type ScoreSourceFormat } from "@/lib/score-parser";
 import { loadMidi, deleteMidi } from "@/lib/midi-storage";
-import { importScore, loadScoreMidi, deleteScore } from "@/lib/score-storage";
+import { importScore, loadScoreMidi, loadScoreMusicXml, deleteScore } from "@/lib/score-storage";
 import { ImportDialog, type ImportDialogResult } from "@/components/ImportDialog";
 import { toast } from "sonner";
 
@@ -67,22 +67,31 @@ export function ScoreLibraryPage({ onSongSelected }: Props) {
         if (!resp.ok) throw new Error("HTTP " + resp.status);
         const ab = await resp.arrayBuffer();
         const bytes = new Uint8Array(ab);
-        song = parseSmf(bytes);
+        song = await parseScore(bytes, "midi");
         song.name = entry.name;
       } catch (err) {
         toast.error(t("toast.load_failed", { msg: String(err) }));
         return;
       }
     } else {
-      // Custom imported MIDI: prefer file-system storage, fall back to legacy IDB.
+      // Custom imported score: dispatch on source format.
+      // MusicXML scores read score.musicxml; MIDI scores read song.mid
+      // (file-system first, legacy IDB fallback).
       try {
-        let bytes = await loadScoreMidi(entry.id);
-        if (!bytes) bytes = await loadMidi(entry.id);
+        const fmt: ScoreSourceFormat =
+          (entry as ScoreEntry).sourceFormat === "musicxml" ? "musicxml" : "midi";
+        let bytes: Uint8Array | null = null;
+        if (fmt === "musicxml") {
+          bytes = await loadScoreMusicXml(entry.id);
+        } else {
+          bytes = await loadScoreMidi(entry.id);
+          if (!bytes) bytes = await loadMidi(entry.id);
+        }
         if (!bytes) {
           toast.error(t("toast.load_failed", { msg: "file not found" }));
           return;
         }
-        song = parseSmf(bytes);
+        song = await parseScore(bytes, fmt);
         song.name = entry.name;
       } catch (err) {
         toast.error(t("toast.load_failed", { msg: String(err) }));
@@ -100,10 +109,17 @@ export function ScoreLibraryPage({ onSongSelected }: Props) {
   const handleImport = () => setImportOpen(true);
 
   const handleImportConfirm = async (r: ImportDialogResult) => {
-    const song = parseSmf(r.midiBytes);
+    // MusicXML parses through Verovio (async); MIDI parses synchronously.
+    let song;
+    try {
+      song = await parseScore(r.sourceBytes, r.sourceFormat);
+    } catch (err) {
+      toast.error(t("toast.load_failed", { msg: String(err) }));
+      return;
+    }
     const meta = await importScore({
-      midiBytes: r.midiBytes,
-      pdfBytes: r.pdfBytes,
+      midiBytes: r.sourceBytes,
+      musicXmlBytes: r.sourceFormat === "musicxml" ? r.sourceBytes : null,
       name: r.name,
       composer: t("score.custom"),
       difficulty: "medium",
@@ -111,6 +127,7 @@ export function ScoreLibraryPage({ onSongSelected }: Props) {
       noteCount: song.notes.length,
       tempo: 120,
       timeSignature: "4/4",
+      sourceFormat: r.sourceFormat,
     });
     await useScoreLibraryStore.getState().rescan();
     song.name = meta.name;

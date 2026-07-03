@@ -5,11 +5,18 @@
 import { isNative } from "./env";
 import { webFallback } from "./web-fallback";
 import { makeScoreId, isValidFolderName } from "./slug";
-import { type ScoreMeta, META_SCHEMA_VERSION } from "./types";
+import {
+  type ScoreMeta,
+  type ScoreSourceFormat,
+  META_SCHEMA_VERSION,
+  MUSICXML_FILENAME,
+} from "./types";
 
 export interface ImportScoreInput {
+  /** The playable source bytes (MIDI, or synthesized MIDI for MusicXML). */
   midiBytes: Uint8Array;
-  pdfBytes?: Uint8Array | null;
+  /** When sourceFormat is "musicxml", the original engraving bytes to persist. */
+  musicXmlBytes?: Uint8Array | null;
   name: string;
   composer?: string;
   difficulty?: string;
@@ -18,6 +25,8 @@ export interface ImportScoreInput {
   noteCount?: number;
   tempo?: number;
   timeSignature?: string;
+  /** Defaults to "midi" when omitted. */
+  sourceFormat?: ScoreSourceFormat;
 }
 
 export interface ScoreMetaInput {
@@ -29,11 +38,12 @@ export interface ScoreMetaInput {
   noteCount: number;
   tempo: number;
   timeSignature: string;
-  hasPdf: boolean;
+  sourceFormat?: ScoreSourceFormat;
 }
 
 /** Build a meta.json object from imported MIDI metadata. */
 export function buildMetaFromMidi(input: ScoreMetaInput): ScoreMeta {
+  const sourceFormat: ScoreSourceFormat = input.sourceFormat ?? "midi";
   const meta: ScoreMeta = {
     schemaVersion: META_SCHEMA_VERSION,
     id: input.id,
@@ -42,30 +52,24 @@ export function buildMetaFromMidi(input: ScoreMetaInput): ScoreMeta {
     difficulty: input.difficulty,
     category: "custom",
     midiFile: "song.mid",
-    hasPdf: false,
     duration: input.duration,
     noteCount: input.noteCount,
     tempo: input.tempo,
     timeSignature: input.timeSignature,
     addedAt: Math.floor(Date.now() / 1000),
+    sourceFormat,
   };
-  if (input.hasPdf) {
-    meta.pdfFile = "score.pdf";
-    meta.hasPdf = true;
-    meta.pdfScroll = { mode: "follow", scrollableHeight: 0, anchors: [] };
+  if (sourceFormat === "musicxml") {
+    meta.musicXmlFile = MUSICXML_FILENAME;
   }
   return meta;
 }
 
 /**
  * Parse raw meta.json strings from listScoreFolders into valid ScoreMeta[],
- * skipping corrupt/incomplete entries. hasPdf is recomputed from the pdfPresent
- * predicate (which checks score.pdf existence) so it never trusts stale meta.
+ * skipping corrupt/incomplete entries.
  */
-export function parseListedMetas(
-  raws: string[],
-  pdfPresent: (folderId: string) => boolean,
-): ScoreMeta[] {
+export function parseListedMetas(raws: string[]): ScoreMeta[] {
   const out: ScoreMeta[] = [];
   for (const raw of raws) {
     let m: any;
@@ -83,17 +87,6 @@ export function parseListedMetas(
     ) {
       continue;
     }
-    // Recompute hasPdf from actual file presence.
-    const present = pdfPresent(m.id);
-    if (present) {
-      m.hasPdf = true;
-      m.pdfFile = "score.pdf";
-      if (!m.pdfScroll) m.pdfScroll = { mode: "follow", scrollableHeight: 0, anchors: [] };
-    } else {
-      m.hasPdf = false;
-      delete m.pdfFile;
-      delete m.pdfScroll;
-    }
     // Ensure required fields have safe defaults.
     if (typeof m.composer !== "string") m.composer = "";
     if (typeof m.difficulty !== "string") m.difficulty = "medium";
@@ -102,6 +95,7 @@ export function parseListedMetas(
     if (typeof m.tempo !== "number") m.tempo = 120;
     if (typeof m.timeSignature !== "string") m.timeSignature = "4/4";
     if (typeof m.addedAt !== "number") m.addedAt = 0;
+    if (m.sourceFormat !== "midi" && m.sourceFormat !== "musicxml") m.sourceFormat = "midi";
     m.category = "custom";
     out.push(m as ScoreMeta);
   }
@@ -112,11 +106,11 @@ export function parseListedMetas(
 
 type Backend = {
   writeMidi(folder: string, bytes: Uint8Array): Promise<void>;
-  writePdf(folder: string, bytes: Uint8Array): Promise<void>;
+  writeMusicXml(folder: string, bytes: Uint8Array): Promise<void>;
   writeMeta(folder: string, meta: ScoreMeta): Promise<void>;
   readMeta(folder: string): Promise<ScoreMeta | null>;
   readMidi(folder: string): Promise<Uint8Array | null>;
-  readPdf(folder: string): Promise<Uint8Array | null>;
+  readMusicXml(folder: string): Promise<Uint8Array | null>;
   listScoreFoldersRaw(): Promise<string[]>;
   deleteScoreFolder(folder: string): Promise<void>;
   getScoresRoot(): Promise<string>;
@@ -127,11 +121,11 @@ async function backend(): Promise<Backend> {
     const n = await import("./native");
     return {
       writeMidi: n.writeMidi,
-      writePdf: n.writePdf,
+      writeMusicXml: n.writeMusicXml,
       writeMeta: n.writeMeta,
       readMeta: n.readMeta,
       readMidi: n.readMidi,
-      readPdf: n.readPdf,
+      readMusicXml: n.readMusicXml,
       listScoreFoldersRaw: n.listScoreFoldersRaw,
       deleteScoreFolder: n.deleteScoreFolderNative,
       getScoresRoot: n.getScoresRoot,
@@ -149,7 +143,8 @@ export async function importScoreToFolder(
     throw new Error(`invalid folder name: ${folder}`);
   }
   const b = await backend();
-  const hasPdf = !!input.pdfBytes && input.pdfBytes.length > 0;
+  const sourceFormat = input.sourceFormat ?? "midi";
+  const hasMusicXml = sourceFormat === "musicxml" && !!input.musicXmlBytes && input.musicXmlBytes.length > 0;
   const meta = buildMetaFromMidi({
     id: folder,
     name: input.name,
@@ -159,12 +154,12 @@ export async function importScoreToFolder(
     noteCount: input.noteCount ?? 0,
     tempo: input.tempo ?? 120,
     timeSignature: input.timeSignature ?? "4/4",
-    hasPdf,
+    sourceFormat,
   });
   // Write MIDI first; if it fails, nothing else is written (no half-state).
   await b.writeMidi(folder, input.midiBytes);
-  if (hasPdf && input.pdfBytes) {
-    await b.writePdf(folder, input.pdfBytes);
+  if (hasMusicXml && input.musicXmlBytes) {
+    await b.writeMusicXml(folder, input.musicXmlBytes);
   }
   await b.writeMeta(folder, meta);
   return meta;
@@ -180,29 +175,7 @@ export async function importScore(input: ImportScoreInput): Promise<ScoreMeta> {
 export async function listScores(): Promise<ScoreMeta[]> {
   const b = await backend();
   const raws = await b.listScoreFoldersRaw();
-  // Determine pdf presence per folder (best-effort, parallel). A single corrupt
-  // meta.json must never brick the whole listing — guard both the parse and the
-  // read so a bad entry is simply treated as "no pdf".
-  const present = new Set<string>();
-  await Promise.all(
-    raws.map(async (raw) => {
-      let id = "";
-      try {
-        id = (JSON.parse(raw) as ScoreMeta).id;
-      } catch {
-        return;
-      }
-      if (typeof id !== "string" || !isValidFolderName(id)) return;
-      let pdf: Uint8Array | null = null;
-      try {
-        pdf = await b.readPdf(id);
-      } catch {
-        pdf = null;
-      }
-      if (pdf && pdf.length > 0) present.add(id);
-    }),
-  );
-  return parseListedMetas(raws, (id) => present.has(id));
+  return parseListedMetas(raws);
 }
 
 /** Load the parsed MIDI bytes for a score (caller runs parseSmf). */
@@ -211,13 +184,13 @@ export async function loadScoreMidi(folder: string): Promise<Uint8Array | null> 
   return b.readMidi(folder);
 }
 
-/** Load the PDF bytes for a score. */
-export async function loadScorePdf(folder: string): Promise<Uint8Array | null> {
+/** Load the raw MusicXML bytes for a score (null if the score has no MusicXML). */
+export async function loadScoreMusicXml(folder: string): Promise<Uint8Array | null> {
   const b = await backend();
-  return b.readPdf(folder);
+  return b.readMusicXml(folder);
 }
 
-/** Read+write back an updated meta (e.g. after editing pdfScroll anchors). */
+/** Read+write back an updated meta. */
 export async function saveScoreMeta(folder: string, meta: ScoreMeta): Promise<void> {
   const b = await backend();
   await b.writeMeta(folder, meta);
@@ -243,5 +216,5 @@ export async function getScoresRoot(): Promise<string> {
   return b.getScoresRoot();
 }
 
-export type { ScoreMeta, PdfAnchor, PdfScrollConfig } from "./types";
+export type { ScoreMeta, ScoreSourceFormat } from "./types";
 export { makeScoreId, isValidFolderName, slugify } from "./slug";

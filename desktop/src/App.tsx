@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Settings, Eye, ListMusic, ArrowRightLeft, Music, AlignVerticalJustifyCenter, Headphones, FileText, RotateCcw,
+  ArrowLeft, Settings, Eye, ListMusic, ArrowRightLeft, Music, AlignVerticalJustifyCenter, Headphones, RotateCcw,
 } from "lucide-react";
 import { Stage } from "@/components/Stage";
 import { SettingsPanel } from "@/components/SettingsPanel";
@@ -18,7 +18,7 @@ import { ResultPanel } from "@/components/ResultPanel";
 import { FreePlaySummary } from "@/components/FreePlaySummary";
 import { HomePage } from "@/components/HomePage";
 import { ScoreLibraryPage } from "@/components/ScoreLibraryPage";
-import { PdfScoreView } from "@/components/PdfScoreView";
+import { ScoreView } from "@/components/ScoreView";
 import { CountdownOverlay } from "@/components/CountdownOverlay";
 import { SongSwitcher } from "@/components/SongSwitcher";
 import { ScoreModeSelector } from "@/components/ScoreModeSelector";
@@ -42,7 +42,7 @@ import { useNoteReadingStore } from "@/store/useNoteReadingStore";
 import { migrateIndexedDbToFs } from "@/lib/score-storage/migration";
 import { stopAllSynthVoices } from "@/lib/synth";
 import { resetScheduledFlags } from "@/lib/playback-scheduler";
-import { parseSmf } from "@/lib/smf-parser";
+import { parseScore, inferFormatFromName } from "@/lib/score-parser";
 import { useT } from "@/lib/i18n";
 import { Header } from "@/components/Header";
 import type { LoadedMidi } from "@/types/midi";
@@ -94,11 +94,11 @@ export function App() {
   const isRhythmMode = mode === "random-practice" || (mode === "score-practice" && scoreMode === "challenge");
   const isFinished = useRhythmGameStore((s) => s.isFinished);
   const isFailed = useRhythmGameStore((s) => s.isFailed);
-  // Whether the currently-loaded song has an accompanying PDF (for the view toggle).
-  const hasPdfCurrent = useScoreLibraryStore((s) => {
+  // Whether the currently-loaded song has a MusicXML engraving source (for the score view toggle).
+  const hasMusicXmlCurrent = useScoreLibraryStore((s) => {
     if (!song) return false;
     return s.customScores.some(
-      (e) => e.name === song.name && Math.abs(e.duration - song.duration) < 1.5 && e.hasPdf,
+      (e) => e.name === song.name && Math.abs(e.duration - song.duration) < 1.5 && e.hasMusicXml,
     );
   });
 
@@ -117,12 +117,12 @@ export function App() {
     return () => { cancelled = true; };
   }, []);
 
-  // Fall back to waterfall view if the current song has no PDF but we're in pdf view.
+  // Fall back to waterfall if the current song has no MusicXML but we're in score view.
   useEffect(() => {
-    if (viewMode === "pdf" && !hasPdfCurrent) {
+    if (viewMode === "score" && !hasMusicXmlCurrent) {
       setViewMode("waterfall");
     }
-  }, [viewMode, hasPdfCurrent, setViewMode]);
+  }, [viewMode, hasMusicXmlCurrent, setViewMode]);
 
   // --- Mode entry effects ---
   useEffect(() => {
@@ -345,11 +345,15 @@ export function App() {
 
   useEffect(() => () => stopAllSynthVoices(), []);
 
-  const handleFile = (file: LoadedMidi) => {
+  const handleFile = async (file: LoadedMidi) => {
+    // Free-mode drag-drop: infer MIDI vs MusicXML from the extension.
+    const fmt = inferFormatFromName(file.name) ?? "midi";
     try {
-      const parsed = parseSmf(file.bytes);
+      const parsed = await parseScore(file.bytes, fmt);
       parsed.name = file.name;
-      parsed.source = file.bytes;
+      // Keep the SMF source only for MIDI so re-export stays valid. MusicXML
+      // has no SMF source; parseMusicXml intentionally leaves source unset.
+      if (fmt === "midi") parsed.source = file.bytes;
       loadSong(parsed);
       toast.success(t("toast.loaded", { name: file.name, n: parsed.notes.length }));
     } catch (err) {
@@ -554,7 +558,7 @@ export function App() {
               >
                 <ListMusic className="h-4 w-4" />
               </Button>
-              {/* View mode toggle: waterfall / staff / pdf */}
+              {/* View mode toggle: waterfall / score (MusicXML only) */}
              <div className="flex items-center rounded-md border border-bg-2 bg-bg-2 p-0.5">
                <Button
                   variant={viewMode === "waterfall" ? "default" : "ghost"}
@@ -566,23 +570,14 @@ export function App() {
                  <AlignVerticalJustifyCenter className="h-3 w-3" />
                </Button>
                <Button
-                  variant={viewMode === "staff" ? "default" : "ghost"}
+                  variant={viewMode === "score" ? "default" : "ghost"}
                   size="sm"
                   className="h-6 px-2"
-                  onClick={() => setViewMode("staff")}
-                  title={t("view_mode.staff")}
+                  disabled={!hasMusicXmlCurrent}
+                  onClick={() => setViewMode("score")}
+                  title={t("view_mode.score")}
                >
                  <Music className="h-3 w-3" />
-               </Button>
-               <Button
-                  variant={viewMode === "pdf" ? "default" : "ghost"}
-                  size="sm"
-                  className="h-6 px-2"
-                  disabled={!hasPdfCurrent}
-                  onClick={() => setViewMode("pdf")}
-                  title={t("view_mode.pdf")}
-               >
-                 <FileText className="h-3 w-3" />
                </Button>
              </div>
              {scoreMode === "practice" && <TempoControl />}
@@ -625,9 +620,9 @@ export function App() {
 
       <div className="relative flex flex-1 overflow-hidden">
         <Stage />
-        {viewMode === "pdf" && (
+        {viewMode === "score" && (
           <div className="absolute inset-0 z-10">
-            <PdfScoreView />
+            <ScoreView />
           </div>
         )}
         {mode === "free" && <SongStatusBar />}

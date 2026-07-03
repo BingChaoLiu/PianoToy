@@ -10,7 +10,7 @@ import { isValidFolderName } from "./slug";
 import { isNative } from "./env";
 import {
   MIDI_FILENAME,
-  PDF_FILENAME,
+  MUSICXML_FILENAME,
   META_FILENAME,
   type ScoreMeta,
 } from "./types";
@@ -41,7 +41,7 @@ export async function deleteScoreFolderNative(folder: string): Promise<void> {
   await invoke<void>("delete_score_folder", { folder });
 }
 
-/** Write bytes to a file inside a score folder (song.mid / score.pdf / meta.json). */
+/** Write bytes to a file inside a score folder (song.mid / meta.json). */
 async function writeFile(folder: string, filename: string, bytes: Uint8Array): Promise<void> {
   assertFolder(folder);
   const root = await getScoresRoot();
@@ -66,8 +66,8 @@ export async function writeMidi(folder: string, bytes: Uint8Array): Promise<void
   await writeFile(folder, MIDI_FILENAME, bytes);
 }
 
-export async function writePdf(folder: string, bytes: Uint8Array): Promise<void> {
-  await writeFile(folder, PDF_FILENAME, bytes);
+export async function writeMusicXml(folder: string, bytes: Uint8Array): Promise<void> {
+  await writeFile(folder, MUSICXML_FILENAME, bytes);
 }
 
 export async function writeMeta(folder: string, meta: ScoreMeta): Promise<void> {
@@ -87,9 +87,9 @@ export async function readMidi(folder: string): Promise<Uint8Array> {
   return readScoreFileBytes(folder, MIDI_FILENAME);
 }
 
-export async function readPdf(folder: string): Promise<Uint8Array | null> {
+export async function readMusicXml(folder: string): Promise<Uint8Array | null> {
   try {
-    return await readScoreFileBytes(folder, PDF_FILENAME);
+    return await readScoreFileBytes(folder, MUSICXML_FILENAME);
   } catch {
     return null;
   }
