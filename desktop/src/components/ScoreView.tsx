@@ -203,36 +203,39 @@ export function ScoreView() {
     };
   }, [state]);
 
-  if (state === "loading") {
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-bg-0/80 text-sm text-muted">
-        {t("score_view.loading")}
-      </div>
-    );
-  }
-
-  if (state === "error") {
-    return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-bg-0/90 text-center">
-        <p className="text-sm text-muted">{t("score_view.load_failed")}</p>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setViewMode("waterfall")}
-        >
-          <ArrowLeft className="mr-1 h-3 w-3" />
-          {t("score_view.back_to_waterfall")}
-        </Button>
-        {errorMsg === "no_score" && (
-          <p className="text-xs text-muted">{t("score_view.no_score")}</p>
-        )}
-      </div>
-    );
-  }
-
+  // IMPORTANT: the container div (with containerRef) must render in EVERY state,
+  // not just "ready". The load effect runs while state is still "loading" and
+  // assigns host.innerHTML there — if the container only mounts in the "ready"
+  // branch, containerRef.current is null at injection time and the SVG is
+  // silently dropped, leaving a blank screen behind the (later-removed) loading
+  // overlay. Loading/error UI are absolutely-positioned overlays on top.
   return (
-    <div className="h-full w-full overflow-auto bg-bg-0 score-view-host">
+    <div className="relative h-full w-full overflow-auto bg-bg-0 score-view-host">
+      {/* Always-mounted container; SVG is injected here once Verovio finishes. */}
       <div ref={containerRef} className="mx-auto w-full max-w-4xl p-4" />
+
+      {state === "loading" && (
+        <div className="absolute inset-0 flex items-center justify-center bg-bg-0/80 text-sm text-muted">
+          {t("score_view.loading")}
+        </div>
+      )}
+
+      {state === "error" && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-bg-0/90 text-center">
+          <p className="text-sm text-muted">{t("score_view.load_failed")}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setViewMode("waterfall")}
+          >
+            <ArrowLeft className="mr-1 h-3 w-3" />
+            {t("score_view.back_to_waterfall")}
+          </Button>
+          {errorMsg === "no_score" && (
+            <p className="text-xs text-muted">{t("score_view.no_score")}</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
