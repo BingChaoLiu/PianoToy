@@ -125,7 +125,11 @@ export function ImportDialog({ open, onClose, onConfirm }: Props) {
             return;
           }
           try {
-            const bytes: Uint8Array = await invoke("read_midi_bytes", { path });
+            // Tauri's read_midi_bytes returns a plain number[], not a typed
+            // array — wrap it so downstream code (TextDecoder, parseSmf) gets
+            // a real Uint8Array. (invoke is typed as number[] in lib.rs.)
+            const arr = await invoke<number[]>("read_midi_bytes", { path });
+            const bytes = new Uint8Array(arr);
             setSource({ bytes, name: fileName, format: fmt });
             setName((n) => n || fileName.replace(/\.[^.]+$/, ""));
             setError(null);

@@ -39,14 +39,26 @@ function base64ToBytes(b64: string): Uint8Array {
   return out;
 }
 
+/** Accepted byte-source shapes for parsing. Tauri's invoke returns number[],
+ *  while browser file readers give ArrayBuffer/Uint8Array — accept them all. */
+export type ScoreBytes = Uint8Array | ArrayBuffer | number[];
+
+/** Coerce any accepted byte-source into a real Uint8Array. */
+function toUint8Array(bytes: ScoreBytes): Uint8Array {
+  if (bytes instanceof Uint8Array) return bytes;
+  if (Array.isArray(bytes)) return new Uint8Array(bytes);
+  return new Uint8Array(bytes as ArrayBuffer);
+}
+
 /**
  * Parse a MusicXML file into a playable Song.
  *
  * Verovio renders the MusicXML to an SMF (base64), which is then fed to the
  * existing parseSmf. The resulting Song's `name` is left for the caller to set.
  */
-export async function parseMusicXml(bytes: Uint8Array): Promise<Song> {
-  const xml = new TextDecoder().decode(bytes);
+export async function parseMusicXml(bytes: ScoreBytes): Promise<Song> {
+  const u8 = toUint8Array(bytes);
+  const xml = new TextDecoder().decode(u8);
   const tk = await getToolkit();
 
   let ok = false;

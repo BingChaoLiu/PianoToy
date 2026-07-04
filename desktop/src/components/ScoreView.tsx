@@ -71,7 +71,14 @@ export function ScoreView() {
           setErrorMsg("no_score");
           return;
         }
-        const xml = new TextDecoder().decode(bytes);
+        // Defensive: loadScoreMusicXml is typed Uint8Array, but a Tauri invoke
+        // can leak a number[] through — coerce so TextDecoder.decode is safe.
+        const u8 = bytes instanceof Uint8Array
+          ? bytes
+          : Array.isArray(bytes)
+            ? new Uint8Array(bytes)
+            : new Uint8Array(bytes as ArrayBuffer);
+        const xml = new TextDecoder().decode(u8);
         const rendered = await loadScoreIntoVerovio(xml);
         if (cancelled) return;
         if (rendered.svgPages.length === 0) {

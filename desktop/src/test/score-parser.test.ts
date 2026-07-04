@@ -48,6 +48,25 @@ describe("parseScore dispatcher", () => {
     expect(parseSmfMock).not.toHaveBeenCalled();
     expect((song as any).__from).toBe("musicxml");
   });
+
+  it("normalizes a Tauri-style number[] into Uint8Array before parsing (regression)", async () => {
+    // Tauri's invoke returns number[] despite the Uint8Array type claim; this
+    // previously made TextDecoder.decode throw "parameter 1 is not of type
+    // ArrayBuffer" on MusicXML import. parseScore must coerce it.
+    const arr = [10, 20, 30];
+    await parseScore(arr as unknown as Uint8Array, "midi");
+    const passed = parseSmfMock.mock.calls[0][0];
+    expect(passed).toBeInstanceOf(Uint8Array);
+    expect(Array.from(passed as Uint8Array)).toEqual([10, 20, 30]);
+  });
+
+  it("normalizes an ArrayBuffer into Uint8Array before parsing", async () => {
+    const buf = new Uint8Array([7, 8]).buffer;
+    await parseScore(buf, "musicxml");
+    const passed = parseMusicXmlMock.mock.calls[0][0];
+    expect(passed).toBeInstanceOf(Uint8Array);
+    expect(Array.from(passed as Uint8Array)).toEqual([7, 8]);
+  });
 });
 
 describe("inferFormatFromName", () => {
