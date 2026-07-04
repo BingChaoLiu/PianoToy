@@ -17,6 +17,7 @@ import { useScoreViewStore } from "@/store/useScoreViewStore";
 import { useT } from "@/lib/i18n";
 import { loadScoreMusicXml } from "@/lib/score-storage";
 import { loadScoreIntoVerovio, findActiveNoteIds, destroyVerovio, type VerovioScore } from "@/lib/verovio-engine";
+import { VEROVIO_DARK_THEME_CSS } from "@/lib/verovio-dark-theme";
 import { ArrowLeft } from "lucide-react";
 
 type LoadState = "loading" | "ready" | "error";
@@ -41,6 +42,19 @@ export function ScoreView() {
   // Find the ScoreEntry matching the loaded song so we know which folder to
   // read score.musicxml from. Mirrors App.tsx's name+duration match.
   const customScores = useScoreLibraryStore((s) => s.customScores);
+
+  // Inject the Verovio dark-theme CSS once. Lives in a TS constant (not
+  // globals.css) so the !important specificity contract is unit-testable;
+  // Vitest stubs `.css?raw` imports to empty, which defeated a real-file test.
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.setAttribute("data-verovio-theme", "");
+    style.textContent = VEROVIO_DARK_THEME_CSS;
+    document.head.appendChild(style);
+    return () => {
+      style.remove();
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

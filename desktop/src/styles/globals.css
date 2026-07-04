@@ -23,41 +23,8 @@
   }
 }
 
-/* --- Verovio score view (dark theme adaptation) ------------------------- */
-/* Verovio renders ink on white by default. We override the SVG internals so
-   the score reads on the app's dark background without touching Verovio
-   options (whose theme keys are unstable across versions). Highlighting is
-   driven by the `.vrv-playing` class ScoreView toggles on note elements. */
-.score-view-host svg {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-/* Transparent page background; ink + staff lines swapped to a light tone. */
-.score-view-host svg .page-margin,
-.score-view-host svg rect {
-  fill: transparent;
-}
-.score-view-host svg {
-  fill: #e8eaf2; /* default ink for text/notes */
-  color: #e8eaf2;
-}
-/* Staff lines, barlines, beams, stems, clefs inherit the light ink via fill. */
-.score-view-host svg path,
-.score-view-host svg line,
-.score-view-host svg polygon {
-  stroke: #c9ccd6;
-}
-/* Noteheads: ensure they're visible on dark. */
-.score-view-host svg .note {
-  fill: #e8eaf2;
-}
-/* Currently-sounding note(s): warm accent fill + subtle scale for emphasis. */
-.score-view-host svg .vrv-playing {
-  fill: #f5b942 !important;
-}
-.score-view-host svg .vrv-playing path,
-.score-view-host svg .vrv-playing use {
-  fill: #f5b942 !important;
-  stroke: #f5b942 !important;
-}
+/* Verovio score-view dark theme is applied at runtime by ScoreView.tsx via a
+   <style> tag (see src/lib/verovio-dark-theme.ts). It lives in a TS constant
+   so the !important specificity contract can be unit-tested — Vitest stubs
+   .css?raw imports to empty, which made a real CSS file untestable. */
+
