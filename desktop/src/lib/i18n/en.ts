@@ -8,6 +8,10 @@ const lang: Translation = {
   toast: {
     loaded: "Loaded {name} ({n} notes)",
     load_failed: "Load failed: {msg}",
+    generating_musicxml_first_run: "Loading converter (one-time, ~5 s)…",
+    generating_musicxml: "Generating sheet music…",
+    musicxml_generated: "Sheet music ready for {name}",
+    musicxml_failed: "Couldn't generate sheet music for {name} — saved as MIDI only",
   },
   header: {
     select_demo: "Choose demo",
@@ -219,6 +223,15 @@ const lang: Translation = {
     release_to_drop: "Release to import",
     file_too_large: "File too large",
     midi_required: "Please select a MIDI file",
+    generate_musicxml: "Generate sheet music (MusicXML)",
+    generate_musicxml_hint: "Converts this MIDI to engraving so the score view is available. First run downloads a ~20 MB converter; subsequent conversions take a few seconds.",
+    stage_loading_converter: "Loading converter…",
+    stage_loading_converter_hint: "The first conversion loads a ~20 MB engine. This happens only once.",
+    stage_converting: "Generating sheet music…",
+    stage_converting_hint: "Converting the MIDI to sheet music. Usually takes a few seconds.",
+    importing: "Importing…",
+    conversion_failed: "Sheet music generation failed",
+    continue_without_sheet_music: "Continue without sheet music",
   },
   reading: {
     mode_label: "Note Reading",

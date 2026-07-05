@@ -6,6 +6,14 @@ export interface Translation {
   toast: {
     loaded: string;
     load_failed: string;
+    /** Loading toast: cold-start converter boot (first run only). */
+    generating_musicxml_first_run: string;
+    /** Loading toast: conversion in progress (warm worker). */
+    generating_musicxml: string;
+    /** Success toast after MusicXML is generated + appended. */
+    musicxml_generated: string;
+    /** Error toast when conversion fails (score stays MIDI-only). */
+    musicxml_failed: string;
   };
   header: {
     select_demo: string;
@@ -217,6 +225,24 @@ export interface Translation {
     release_to_drop: string;
     file_too_large: string;
     midi_required: string;
+    /** Checkbox label (MIDI imports only): generate a sheet-music view. */
+    generate_musicxml: string;
+    /** Checkbox hint explaining the conversion cost. */
+    generate_musicxml_hint: string;
+    /** Inline-progress stage label: WASM boot (first run only). */
+    stage_loading_converter: string;
+    /** Inline-progress hint shown during the cold converter boot. */
+    stage_loading_converter_hint: string;
+    /** Inline-progress stage label: conversion in progress. */
+    stage_converting: string;
+    /** Inline-progress hint shown during the conversion step. */
+    stage_converting_hint: string;
+    /** Inline-progress label while the (non-converting) import is saving. */
+    importing: string;
+    /** Heading for the inline conversion-failed surface. */
+    conversion_failed: string;
+    /** Button: proceed with the MIDI-only score (no sheet-music view). */
+    continue_without_sheet_music: string;
   };
   reading: {
     mode_label: string;

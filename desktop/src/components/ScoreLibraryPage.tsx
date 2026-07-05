@@ -1,6 +1,6 @@
 // ScoreLibraryPage: browse and select scores for practice.
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { ArrowLeft, Search, FileUp, Trash2, User, LayoutGrid, List, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppModeStore } from "@/store/useAppModeStore";
@@ -11,8 +11,9 @@ import { useT } from "@/lib/i18n";
 import { SCORE_CATALOG, CATEGORIES, DIFFICULTIES } from "@/lib/songs/catalog";
 import { parseScore, type ScoreSourceFormat } from "@/lib/score-parser";
 import { loadMidi, deleteMidi } from "@/lib/midi-storage";
-import { importScore, loadScoreMidi, loadScoreMusicXml, deleteScore } from "@/lib/score-storage";
-import { ImportDialog, type ImportDialogResult } from "@/components/ImportDialog";
+import { importScore, loadScoreMidi, loadScoreMusicXml, deleteScore, appendMusicXml } from "@/lib/score-storage";
+import { ImportDialog, type ImportDialogResult, type ImportDialogHooks, type ImportOutcome } from "@/components/ImportDialog";
+import { convertMidiToMusicXml } from "@/lib/midi-converter";
 import { toast } from "sonner";
 
 
@@ -108,32 +109,83 @@ export function ScoreLibraryPage({ onSongSelected }: Props) {
 
   const handleImport = () => setImportOpen(true);
 
-  const handleImportConfirm = async (r: ImportDialogResult) => {
+  // Track which score folder was already created during this dialog session,
+  // so the "Continue without sheet music" re-entry (after a conversion
+  // failure) doesn't try to re-import the same MIDI and create a duplicate.
+  // Cleared whenever the dialog closes (rescan + navigation re-seeds state).
+  const lastImportedFolderRef = useRef<string | null>(null);
+
+  const handleImportConfirm = async (
+    r: ImportDialogResult,
+    hooks: ImportDialogHooks,
+  ): Promise<ImportOutcome> => {
     // MusicXML parses through Verovio (async); MIDI parses synchronously.
     let song;
     try {
       song = await parseScore(r.sourceBytes, r.sourceFormat);
     } catch (err) {
-      toast.error(t("toast.load_failed", { msg: String(err) }));
-      return;
+      return { ok: false, error: t("toast.load_failed", { msg: String(err) }) };
     }
-    const meta = await importScore({
-      midiBytes: r.sourceBytes,
-      musicXmlBytes: r.sourceFormat === "musicxml" ? r.sourceBytes : null,
-      name: r.name,
-      composer: t("score.custom"),
-      difficulty: "medium",
-      duration: Math.round(song.duration),
-      noteCount: song.notes.length,
-      tempo: 120,
-      timeSignature: "4/4",
-      sourceFormat: r.sourceFormat,
-    });
+
+    // Persist the score (MIDI-only, or MIDI+MusicXML for a direct MusicXML
+    // import). Skip if we already saved it during this dialog session — that
+    // happens when "Continue without sheet music" re-enters after a failed
+    // conversion; the folder + MIDI already exist.
+    let folderId = lastImportedFolderRef.current;
+    if (!folderId) {
+      const meta = await importScore({
+        midiBytes: r.sourceBytes,
+        musicXmlBytes: r.sourceFormat === "musicxml" ? r.sourceBytes : null,
+        name: r.name,
+        composer: t("score.custom"),
+        difficulty: "medium",
+        duration: Math.round(song.duration),
+        noteCount: song.notes.length,
+        tempo: 120,
+        timeSignature: "4/4",
+        sourceFormat: r.sourceFormat,
+      });
+      folderId = meta.id;
+      lastImportedFolderRef.current = folderId;
+      await useScoreLibraryStore.getState().rescan();
+    }
+
+    // Optional: convert MIDI → MusicXML via webmscore so the score gains a
+    // sheet-music view. The dialog shows inline progress via hooks.onStage.
+    // On failure we bail with {ok:false} so the dialog offers "Continue
+    // without sheet music" — the MIDI score is already saved either way.
+    if (r.generateMusicXml) {
+      // Copy the bytes — the worker takes ownership (transfers the buffer).
+      const midiCopy = new Uint8Array(r.sourceBytes);
+      try {
+        const xml = await convertMidiToMusicXml(midiCopy, {
+          onStage: (stage) => hooks.onStage?.(stage),
+        });
+        await appendMusicXml(folderId, new TextEncoder().encode(xml));
+        await useScoreLibraryStore.getState().rescan();
+        toast.success(t("toast.musicxml_generated", { name: r.name }));
+      } catch (err) {
+        console.error("[import] MIDI→MusicXML conversion failed", err);
+        return {
+          ok: false,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
+    }
+
+    // Everything ready — load the song + navigate. This runs LAST so the
+    // dialog stays on the progress surface until the conversion (if any)
+    // completes, then closes into the mode-selection screen.
     await useScoreLibraryStore.getState().rescan();
-    song.name = meta.name;
+    const freshMeta = useScoreLibraryStore.getState().customScores.find(
+      (e) => e.id === folderId,
+    );
+    song.name = freshMeta?.name ?? r.name;
     loadSong(song);
     if (onSongSelected) onSongSelected();
-    toast.success(t("toast.loaded", { name: meta.name, n: song.notes.length }));
+    toast.success(t("toast.loaded", { name: song.name, n: song.notes.length }));
+    lastImportedFolderRef.current = null;
+    return { ok: true };
   };
 
   const handleDelete = async (entry: ScoreEntry) => {

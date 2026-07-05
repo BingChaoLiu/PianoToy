@@ -196,6 +196,40 @@ export async function saveScoreMeta(folder: string, meta: ScoreMeta): Promise<vo
   await b.writeMeta(folder, meta);
 }
 
+/**
+ * Append a generated MusicXML file to an existing MIDI-only score and flip its
+ * meta to sourceFormat="musicxml" + musicXmlFile. Used by the MIDI→MusicXML
+ * conversion flow (webmscore): the score is first imported as MIDI-only (so
+ * audio + waterfall work immediately), then this is called once the converter
+ * finishes to enable the score (sheet-music) view.
+ *
+ * Reads the current meta first so we don't clobber unrelated fields. If the
+ * meta read fails (corrupt/missing), we build a minimal one from the folder id.
+ */
+export async function appendMusicXml(folder: string, musicXmlBytes: Uint8Array): Promise<ScoreMeta> {
+  if (!isValidFolderName(folder)) {
+    throw new Error(`invalid folder name: ${folder}`);
+  }
+  const b = await backend();
+  await b.writeMusicXml(folder, musicXmlBytes);
+  const existing = await b.readMeta(folder);
+  const meta: ScoreMeta = existing
+    ? { ...existing, sourceFormat: "musicxml", musicXmlFile: MUSICXML_FILENAME }
+    : buildMetaFromMidi({
+        id: folder,
+        name: folder,
+        composer: "",
+        difficulty: "medium",
+        duration: 0,
+        noteCount: 0,
+        tempo: 120,
+        timeSignature: "4/4",
+        sourceFormat: "musicxml",
+      });
+  await b.writeMeta(folder, meta);
+  return meta;
+}
+
 export async function readScoreMeta(folder: string): Promise<ScoreMeta | null> {
   const b = await backend();
   return b.readMeta(folder);

@@ -60,4 +60,36 @@ describe("i18n", () => {
     const msg = translate("zh-CN", "settings.load_failed", { msg: "network" });
     expect(msg).toContain("network");
   });
+
+  it("exposes the musicxml-conversion toast keys in every locale", () => {
+    // Guards the 6-locale contract for the new MIDI→MusicXML conversion flow.
+    // Each key must resolve to a non-empty, non-fallback string.
+    const keys = [
+      "toast.generating_musicxml_first_run",
+      "toast.generating_musicxml",
+      "toast.musicxml_generated",
+      "toast.musicxml_failed",
+      "import_dialog.generate_musicxml",
+      "import_dialog.generate_musicxml_hint",
+      "import_dialog.stage_loading_converter",
+      "import_dialog.stage_loading_converter_hint",
+      "import_dialog.stage_converting",
+      "import_dialog.stage_converting_hint",
+      "import_dialog.importing",
+      "import_dialog.conversion_failed",
+      "import_dialog.continue_without_sheet_music",
+    ];
+    for (const code of ["zh-CN", "en", "ja", "es", "fr", "de"]) {
+      for (const key of keys) {
+        const out = translate(code as any, key as any);
+        expect(out, `${code} ${key}`).not.toBe(key);
+        expect(out.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("interpolates {name} in the musicxml_generated toast", () => {
+    const out = translate("en", "toast.musicxml_generated", { name: "Ode" });
+    expect(out).toContain("Ode");
+  });
 });

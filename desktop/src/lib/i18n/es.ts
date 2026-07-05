@@ -2,7 +2,14 @@ import type { Translation } from "./types";
 
 const lang: Translation = {
   app: { title: "Visualizador de Piano MIDI", phase_label: "Fase 11 \u00b7 MIDI Nativo" },
-  toast: { loaded: "Cargado {name} ({n} notas)", load_failed: "Error al cargar: {msg}" },
+  toast: {
+    loaded: "Cargado {name} ({n} notas)",
+    load_failed: "Error al cargar: {msg}",
+    generating_musicxml_first_run: "Cargando conversor (una vez, ~5 s)…",
+    generating_musicxml: "Generando partitura…",
+    musicxml_generated: "Partitura lista para {name}",
+    musicxml_failed: "No se pudo generar la partitura de {name} — guardado solo como MIDI",
+  },
   header: {
     select_demo: "Elegir demo", load_mid: "Cargar .mid", recording: "Grabar", stop: "Parar",
     start_recording_tip: "Iniciar grabaci\u00f3n", stop_recording_tip: "Detener grabaci\u00f3n",
@@ -136,6 +143,15 @@ time: "Tiempo",
     release_to_drop: "Suelta para importar",
     file_too_large: "Archivo demasiado grande",
     midi_required: "Selecciona un archivo MIDI",
+    generate_musicxml: "Generar partitura (MusicXML)",
+    generate_musicxml_hint: "Convierte este MIDI a partitura para activar la vista de partitura. La primera vez descarga un conversor de ~20 MB; las siguientes conversiones tardan unos segundos.",
+    stage_loading_converter: "Cargando conversor…",
+    stage_loading_converter_hint: "La primera conversión carga un motor de ~20 MB. Solo ocurre una vez.",
+    stage_converting: "Generando partitura…",
+    stage_converting_hint: "Convirtiendo el MIDI a partitura. Suele tardar unos segundos.",
+    importing: "Importando…",
+    conversion_failed: "Error al generar la partitura",
+    continue_without_sheet_music: "Continuar sin partitura",
   },
   reading: {
     mode_label: "Lectura de notas",

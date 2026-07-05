@@ -2,7 +2,14 @@ import type { Translation } from "./types";
 
 const lang: Translation = {
   app: { title: "Klavier MIDI-Visualisierer", phase_label: "Phase 11 \u00b7 Natives MIDI" },
-  toast: { loaded: "{name} geladen ({n} Noten)", load_failed: "Laden fehlgeschlagen: {msg}" },
+  toast: {
+    loaded: "{name} geladen ({n} Noten)",
+    load_failed: "Laden fehlgeschlagen: {msg}",
+    generating_musicxml_first_run: "Konverter wird geladen (einmalig, ~5 s)…",
+    generating_musicxml: "Noten werden erstellt…",
+    musicxml_generated: "Noten für {name} erstellt",
+    musicxml_failed: "Noten für {name} konnten nicht erstellt werden — nur als MIDI gespeichert",
+  },
   header: {
     select_demo: "Demo w\u00e4hlen", load_mid: ".mid laden", recording: "Aufn.", stop: "Stopp",
     start_recording_tip: "Aufnahme starten", stop_recording_tip: "Aufnahme stoppen",
@@ -136,6 +143,15 @@ time: "Zeit",
     release_to_drop: "Zum Importieren loslassen",
     file_too_large: "Datei zu groß",
     midi_required: "Bitte eine MIDI-Datei wählen",
+    generate_musicxml: "Noten erstellen (MusicXML)",
+    generate_musicxml_hint: "Konvertiert diese MIDI-Datei in Noten, damit die Notenansicht verfügbar ist. Beim ersten Mal wird ein ca. 20 MB großer Konverter geladen; spätere Konvertierungen dauern nur wenige Sekunden.",
+    stage_loading_converter: "Konverter wird geladen…",
+    stage_loading_converter_hint: "Die erste Konvertierung lädt eine ca. 20 MB große Engine. Das passiert nur einmal.",
+    stage_converting: "Noten werden erstellt…",
+    stage_converting_hint: "Die MIDI-Datei wird in Noten konvertiert. Dauert meist nur wenige Sekunden.",
+    importing: "Importiere…",
+    conversion_failed: "Notenerstellung fehlgeschlagen",
+    continue_without_sheet_music: "Ohne Noten fortfahren",
   },
   reading: {
     mode_label: "Notenlesen",

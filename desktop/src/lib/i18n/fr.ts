@@ -2,7 +2,14 @@ import type { Translation } from "./types";
 
 const lang: Translation = {
   app: { title: "Visualiseur Piano MIDI", phase_label: "Phase 11 \u00b7 MIDI Natif" },
-  toast: { loaded: "Charg\u00e9 {name} ({n} notes)", load_failed: "\u00c9chec du chargement : {msg}" },
+  toast: {
+    loaded: "Charg\u00e9 {name} ({n} notes)",
+    load_failed: "\u00c9chec du chargement : {msg}",
+    generating_musicxml_first_run: "Chargement du convertisseur (une fois, ~5 s)…",
+    generating_musicxml: "Génération de la partition…",
+    musicxml_generated: "Partition prête pour {name}",
+    musicxml_failed: "Impossible de générer la partition de {name} — enregistré en MIDI uniquement",
+  },
   header: {
     select_demo: "Choisir d\u00e9mo", load_mid: "Charger .mid", recording: "Enreg.", stop: "Arr\u00eater",
     start_recording_tip: "D\u00e9marrer l\u2019enregistrement", stop_recording_tip: "Arr\u00eater l\u2019enregistrement",
@@ -136,6 +143,15 @@ time: "Temps",
     release_to_drop: "Déposez pour importer",
     file_too_large: "Fichier trop volumineux",
     midi_required: "Veuillez sélectionner un fichier MIDI",
+    generate_musicxml: "Générer la partition (MusicXML)",
+    generate_musicxml_hint: "Convertit ce MIDI en partition pour activer la vue partition. Le premier lancement télécharge un convertisseur d'environ 20 Mo ; les conversions suivantes prennent quelques secondes.",
+    stage_loading_converter: "Chargement du convertisseur…",
+    stage_loading_converter_hint: "La première conversion charge un moteur d'environ 20 Mo. Cela n'arrive qu'une fois.",
+    stage_converting: "Génération de la partition…",
+    stage_converting_hint: "Conversion du MIDI en partition. Prend généralement quelques secondes.",
+    importing: "Importation…",
+    conversion_failed: "Échec de la génération de la partition",
+    continue_without_sheet_music: "Continuer sans partition",
   },
   reading: {
     mode_label: "Lecture de notes",

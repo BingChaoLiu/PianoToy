@@ -1,12 +1,23 @@
 // ScoreView: Verovio-rendered sheet music overlay. Loads the current score's
 // MusicXML, renders every page as inline SVG, then runs a RAF loop that
-// highlights the currently-sounding notes and auto-scrolls to keep them in view.
+// highlights the currently-sounding notes and auto-scrolls to keep the
+// active system (staff line) centered.
+//
+// White sheet style: the host is white, Verovio's native black ink renders
+// directly on it. Only the currently-playing note is forced red (#e53935).
 //
 // Playback sync: renderToTimemap() times are in ms at the score's default
 // tempo. usePlaybackStore.currentSongTime() already folds tempoScale into its
 // elapsed computation, so the returned songT is already the un-scaled score
 // time in seconds — multiply by 1000 to compare against the timemap. Do NOT
 // divide by tempoScale (that double-applies it).
+//
+// Auto-scroll: the active note is found by id, then we walk up to its
+// containing Verovio system (<g class="system"> = one staff line, treble +
+// bass for piano). The system is centered with scrollIntoView ONLY when the
+// system changes — notes moving within the same system produce zero scroll,
+// which eliminates the per-note vertical jitter that the old note-centered
+// scroll caused. Fallback chain: .system → .measure → skip.
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -17,13 +28,10 @@ import { useScoreViewStore } from "@/store/useScoreViewStore";
 import { useT } from "@/lib/i18n";
 import { loadScoreMusicXml } from "@/lib/score-storage";
 import { loadScoreIntoVerovio, findActiveNoteIds, destroyVerovio, type VerovioScore } from "@/lib/verovio-engine";
-import { VEROVIO_DARK_THEME_CSS } from "@/lib/verovio-dark-theme";
+import { VEROVIO_SCORE_THEME_CSS } from "@/lib/verovio-score-theme";
 import { ArrowLeft } from "lucide-react";
 
 type LoadState = "loading" | "ready" | "error";
-
-// Throttle auto-scroll so smooth-scroll doesn't fight itself every frame.
-const SCROLL_THROTTLE_MS = 250;
 
 export function ScoreView() {
   const t = useT();
@@ -37,19 +45,21 @@ export function ScoreView() {
   // refs so the RAF loop can read/write them without re-rendering React.
   const scoreRef = useRef<VerovioScore | null>(null);
   const highlightedRef = useRef<Set<string>>(new Set());
-  const lastScrollRef = useRef<number>(0);
+  // The last system element we centered on. Used to detect system changes so
+  // we only scroll once per line, not every frame within a line.
+  const lastSystemRef = useRef<Element | null>(null);
 
   // Find the ScoreEntry matching the loaded song so we know which folder to
   // read score.musicxml from. Mirrors App.tsx's name+duration match.
   const customScores = useScoreLibraryStore((s) => s.customScores);
 
-  // Inject the Verovio dark-theme CSS once. Lives in a TS constant (not
+  // Inject the Verovio score-theme CSS once. Lives in a TS constant (not
   // globals.css) so the !important specificity contract is unit-testable;
   // Vitest stubs `.css?raw` imports to empty, which defeated a real-file test.
   useEffect(() => {
     const style = document.createElement("style");
     style.setAttribute("data-verovio-theme", "");
-    style.textContent = VEROVIO_DARK_THEME_CSS;
+    style.textContent = VEROVIO_SCORE_THEME_CSS;
     document.head.appendChild(style);
     return () => {
       style.remove();
@@ -62,6 +72,7 @@ export function ScoreView() {
     setErrorMsg("");
     scoreRef.current = null;
     highlightedRef.current = new Set();
+    lastSystemRef.current = null;
 
     (async () => {
       if (!song) {
@@ -119,6 +130,7 @@ export function ScoreView() {
       cancelled = true;
       // Clear highlights + tear down the toolkit so the next score loads fresh.
       highlightedRef.current = new Set();
+      lastSystemRef.current = null;
       destroyVerovio();
     };
   }, [song, customScores]);
@@ -133,6 +145,17 @@ export function ScoreView() {
       const host = containerRef.current;
       if (!host) return null;
       return host.querySelector('[id="' + cssEscape(id) + '"]');
+    };
+
+    // Walk up from an element to its containing Verovio system. A Verovio
+    // system is <g class="system"> — one laid-out staff line (for piano:
+    // treble + bass staves together). Fallback: <g class="measure"> (finer,
+    // still vertically stable), then null (caller skips the scroll).
+    const systemOf = (el: Element | null): Element | null => {
+      if (!el) return null;
+      const sys = el.closest(".system");
+      if (sys) return sys;
+      return el.closest(".measure");
     };
 
     const clearHighlight = () => {
@@ -173,23 +196,18 @@ export function ScoreView() {
         const ids = findActiveNoteIds(timemapMs, rendered);
         applyHighlight(ids);
 
-        // Auto-scroll: keep the first highlighted element centered, throttled.
-        const now = performance.now();
-        if (ids.length > 0 && now - lastScrollRef.current > SCROLL_THROTTLE_MS) {
-          const el = noteEl(ids[0]);
-          if (el) {
-            const host = containerRef.current;
-            if (host) {
-              const rect = el.getBoundingClientRect();
-              const viewRect = host.getBoundingClientRect();
-              const margin = viewRect.height * 0.3;
-              // Only scroll when the active note is out of the central band;
-              // avoids re-centering jumps every frame when already visible.
-              if (rect.top < viewRect.top + margin || rect.bottom > viewRect.bottom - margin) {
-                el.scrollIntoView({ block: "center", behavior: "smooth" });
-                lastScrollRef.current = now;
-              }
-            }
+        // Auto-scroll: center the active SYSTEM, not the note. A note's
+        // y-position varies with pitch within the staff, so centering the
+        // note made the page jump on every onset. Centering the system
+        // keeps the page still while notes move within a line, then slides
+        // once when playback crosses into the next line. We scroll ONLY on
+        // system change (not every frame), via the lastSystemRef sentinel.
+        if (ids.length > 0) {
+          const note = noteEl(ids[0]);
+          const system = systemOf(note);
+          if (system && system !== lastSystemRef.current) {
+            system.scrollIntoView({ block: "center", behavior: "smooth" });
+            lastSystemRef.current = system;
           }
         }
       }
@@ -210,19 +228,21 @@ export function ScoreView() {
   // silently dropped, leaving a blank screen behind the (later-removed) loading
   // overlay. Loading/error UI are absolutely-positioned overlays on top.
   return (
-    <div className="relative h-full w-full overflow-auto bg-bg-0 score-view-host">
-      {/* Always-mounted container; SVG is injected here once Verovio finishes. */}
-      <div ref={containerRef} className="mx-auto w-full max-w-4xl p-4" />
+    <div className="score-view-host relative h-full w-full overflow-auto bg-white">
+      {/* Page card: the engraved score sits in a centered narrower card with
+          rounded corners + shadow, mimicking a real sheet of paper on a desk.
+          Always-mounted; SVG is injected here once Verovio finishes. */}
+      <div ref={containerRef} className="score-card mx-auto my-6 w-full max-w-3xl rounded-lg bg-white p-8 shadow-xl" />
 
       {state === "loading" && (
-        <div className="absolute inset-0 flex items-center justify-center bg-bg-0/80 text-sm text-muted">
+        <div className="absolute inset-0 flex items-center justify-center bg-white/85 text-sm text-zinc-700">
           {t("score_view.loading")}
         </div>
       )}
 
       {state === "error" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-bg-0/90 text-center">
-          <p className="text-sm text-muted">{t("score_view.load_failed")}</p>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/90 text-center">
+          <p className="text-sm text-zinc-700">{t("score_view.load_failed")}</p>
           <Button
             variant="outline"
             size="sm"
@@ -232,7 +252,7 @@ export function ScoreView() {
             {t("score_view.back_to_waterfall")}
           </Button>
           {errorMsg === "no_score" && (
-            <p className="text-xs text-muted">{t("score_view.no_score")}</p>
+            <p className="text-xs text-zinc-500">{t("score_view.no_score")}</p>
           )}
         </div>
       )}

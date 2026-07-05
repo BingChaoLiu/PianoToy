@@ -8,6 +8,10 @@ const lang: Translation = {
   toast: {
     loaded: "\u5df2\u52a0\u8f7d {name}\uff08{n} \u4e2a\u97f3\u7b26\uff09",
     load_failed: "\u52a0\u8f7d\u5931\u8d25\uff1a{msg}",
+    generating_musicxml_first_run: "\u6b63\u5728\u52a0\u8f7d\u8f6c\u6362\u5668\uff08\u4ec5\u9996\u6b21\uff0c\u7ea6 5 \u79d2\uff09\u2026",
+    generating_musicxml: "\u6b63\u5728\u751f\u6210\u4e50\u8c31\u2026",
+    musicxml_generated: "{name} \u7684\u4e50\u8c31\u5df2\u751f\u6210",
+    musicxml_failed: "\u65e0\u6cd5\u4e3a {name} \u751f\u6210\u4e50\u8c31 \u2014 \u5df2\u4fdd\u5b58\u4e3a\u4ec5 MIDI",
   },
   header: {
     select_demo: "\u9009\u62e9 Demo",
@@ -219,6 +223,15 @@ const lang: Translation = {
     release_to_drop: "\u677e\u5f00\u5bfc\u5165",
     file_too_large: "\u6587\u4ef6\u8fc7\u5927",
     midi_required: "\u8bf7\u9009\u62e9 MIDI \u6587\u4ef6",
+    generate_musicxml: "\u751f\u6210\u4e50\u8c31\uff08MusicXML\uff09",
+    generate_musicxml_hint: "\u5c06\u6b64 MIDI \u8f6c\u6362\u4e3a\u4e50\u8c31\u4ee5\u542f\u7528\u4e50\u8c31\u89c6\u56fe\u3002\u9996\u6b21\u8fd0\u884c\u4f1a\u52a0\u8f7d\u7ea6 20 MB \u7684\u8f6c\u6362\u5668\uff1b\u4e4b\u540e\u6bcf\u6b21\u8f6c\u6362\u4ec5\u9700\u51e0\u79d2\u3002",
+    stage_loading_converter: "\u6b63\u5728\u52a0\u8f7d\u8f6c\u6362\u5668\u2026",
+    stage_loading_converter_hint: "\u9996\u6b21\u4f7f\u7528\u9700\u8981\u52a0\u8f7d\u7ea6 20 MB \u7684\u8f6c\u6362\u5f15\u64ce\uff0c\u8bf7\u7a0d\u5019\u3002",
+    stage_converting: "\u6b63\u5728\u751f\u6210\u4e50\u8c31\u2026",
+    stage_converting_hint: "\u5c06 MIDI \u8f6c\u6362\u4e3a\u4e50\u8c31\uff0c\u901a\u5e38\u53ea\u9700\u51e0\u79d2\u3002",
+    importing: "\u5bfc\u5165\u4e2d\u2026",
+    conversion_failed: "\u4e50\u8c31\u751f\u6210\u5931\u8d25",
+    continue_without_sheet_music: "\u4e0d\u751f\u6210\u4e50\u8c31\uff0c\u7ee7\u7eed",
   },
   reading: {
     mode_label: "\u8bc6\u8c31\u7ec3\u4e60",

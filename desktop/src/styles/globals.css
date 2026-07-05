@@ -23,8 +23,10 @@
   }
 }
 
-/* Verovio score-view dark theme is applied at runtime by ScoreView.tsx via a
-   <style> tag (see src/lib/verovio-dark-theme.ts). It lives in a TS constant
-   so the !important specificity contract can be unit-tested — Vitest stubs
-   .css?raw imports to empty, which made a real CSS file untestable. */
+/* Verovio score-view highlight (red .vrv-playing) is applied at runtime by
+   ScoreView.tsx via a <style> tag (see src/lib/verovio-score-theme.ts). It
+   lives in a TS constant so the !important specificity contract can be
+   unit-tested — Vitest stubs .css?raw imports to empty, which made a real
+   CSS file untestable. The score view uses Verovio's native black ink on a
+   white host, so no global ink override is needed here. */
 
