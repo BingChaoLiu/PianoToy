@@ -53,8 +53,11 @@ export function NoteReadingStage({
   const [elapsedFrac, setElapsedFrac] = useState(1);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Load today's queue from persisted progress on mount.
+  // Ensure a session exists on mount. When launched from the course browser the
+  // session is already populated (daily mix or level drill), so this is a
+  // fallback for direct entry only — never clobbers a pre-started session.
   useEffect(() => {
+    if (useNoteReadingStore.getState().session) return;
     void startSession();
   }, [startSession]);
 

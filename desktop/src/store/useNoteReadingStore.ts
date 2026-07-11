@@ -14,6 +14,7 @@
 import { create } from "zustand";
 import {
   createSession,
+  createLevelSession,
   judgeAnswer,
   currentCardKey,
   levelJustMastered,
@@ -57,6 +58,8 @@ interface NoteReadingState {
   judgePitch: number | null;
 
   startSession: () => Promise<void>;
+  /** Start a level-scoped drill session (T6): queue restricted to one level. */
+  startLevelSession: (levelId: string) => Promise<void>;
   answerLetter: (letter: string) => void;
   /** Apply a timeout outcome (the adaptive timer expired). */
   answerTimeout: () => void;
@@ -72,7 +75,7 @@ interface NoteReadingState {
  * Build the CourseState the controller expects from a loaded ProgressFile: the
  * plain-object card record becomes a Map keyed by the string CardKey.
  */
-function courseStateFromProgress(p: ProgressFile): CourseState {
+export function courseStateFromProgress(p: ProgressFile): CourseState {
   const cards: CardMap = new Map();
   for (const [id, card] of Object.entries(p.cards)) cards.set(id, card as Card);
   return { cards, threshold: p.threshold };
@@ -82,6 +85,28 @@ function progressFromSession(session: PracticeSession, base: ProgressFile): Prog
   const cards: Record<string, Card> = {};
   for (const [id, card] of session.cards) cards[id] = card;
   return { ...base, cards };
+}
+
+/**
+ * Install a freshly-built session into the store: set phase + appearAt from the
+ * session's status and stamp the start time. Shared by startSession (daily mix)
+ * and startLevelSession (level drill) so the two launch paths stay in sync.
+ */
+function activateSession(
+  set: (partial: Partial<NoteReadingState>) => void,
+  progress: ProgressFile,
+  session: PracticeSession,
+): void {
+  set({
+    progress,
+    session,
+    phase: session.status === "complete" ? "complete" : "active",
+    currentCardAppearAt: session.status === "active" ? performance.now() : null,
+    startTime: performance.now(),
+    lastProgressionCue: null,
+    judge: "none",
+    judgePitch: null,
+  });
 }
 
 export const useNoteReadingStore = create<NoteReadingState>((set, get) => ({
@@ -97,18 +122,15 @@ export const useNoteReadingStore = create<NoteReadingState>((set, get) => ({
   startSession: async () => {
     const progress = await loadProgress(DEFAULT_THRESHOLD);
     const state = courseStateFromProgress(progress);
-    const now = Date.now();
-    const session = createSession(state, now, { newCardsPerDay: DEFAULT_NEW_CARDS_PER_DAY });
-    set({
-      progress,
-      session,
-      phase: session.status === "complete" ? "complete" : "active",
-      currentCardAppearAt: session.status === "active" ? performance.now() : null,
-      startTime: performance.now(),
-      lastProgressionCue: null,
-      judge: "none",
-      judgePitch: null,
-    });
+    const session = createSession(state, Date.now(), { newCardsPerDay: DEFAULT_NEW_CARDS_PER_DAY });
+    activateSession(set, progress, session);
+  },
+
+  startLevelSession: async (levelId) => {
+    const progress = await loadProgress(DEFAULT_THRESHOLD);
+    const state = courseStateFromProgress(progress);
+    const session = createLevelSession(state, Date.now(), levelId);
+    activateSession(set, progress, session);
   },
 
   answerLetter: (letter) => {

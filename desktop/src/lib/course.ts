@@ -301,3 +301,23 @@ export function masteredLevelCount(state: CourseState): number {
   }
   return n;
 }
+
+/**
+ * A level's display status for the course browser (T6). Derived purely from
+ * the unlock machine + card map:
+ *   - "mastered"    : every card clears the mastery threshold (done).
+ *   - "in-progress" : unlocked and at least one card entered, but not mastered.
+ *   - "ready"       : unlocked with no cards entered yet (fresh start).
+ *   - "locked"      : a gating level/branch isn't cleared yet.
+ */
+export type LevelStatus = "locked" | "ready" | "in-progress" | "mastered";
+
+export function levelStatus(state: CourseState, levelId: string): LevelStatus {
+  if (isLevelMastered(state, levelId)) return "mastered";
+  if (!isLevelUnlocked(state, levelId)) return "locked";
+  // Unlocked but not mastered: "in-progress" if the learner has entered any of
+  // this level's cards, otherwise "ready" (not started).
+  const level = getLevel(levelId);
+  const started = level.cards.some((k) => state.cards.has(cardKeyToString(k)));
+  return started ? "in-progress" : "ready";
+}

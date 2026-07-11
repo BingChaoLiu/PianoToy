@@ -94,16 +94,22 @@ export function createSession(
   opts: CreateSessionOptions,
 ): PracticeSession {
   const queue = buildDailyQueue(state, now, { newCardsPerDay: opts.newCardsPerDay });
-  return {
-    queue,
-    cards: new Map(state.cards),
-    correctCount: 0,
-    wrongCount: 0,
-    slowCount: 0,
-    streak: 0,
-    bestStreak: 0,
-    status: queue.length === 0 ? "complete" : "active",
-  };
+  return makeSession(state, queue);
+}
+
+/**
+ * Build a level-scoped drill session (T6): the queue is restricted to a single
+ * level's cards — its due cards first (urgent), then its new (un-entered)
+ * cards, with no new-card cap (a focused drill works the whole set). Used when
+ * the learner picks a specific level from the course browser.
+ */
+export function createLevelSession(
+  state: CourseState,
+  now: number,
+  levelId: string,
+): PracticeSession {
+  const queue = buildLevelQueue(state, now, levelId);
+  return makeSession(state, queue);
 }
 
 /** The string cardKey of the card currently on screen, or null if complete. */
@@ -234,4 +240,40 @@ function isLevelCardSetMastered(
     if (!card || !isMastered(card, threshold)) return false;
   }
   return true;
+}
+
+/**
+ * Build a queue scoped to a single level: due cards first (sorted by due asc),
+ * then the level's new (un-entered) cards. No new-card cap — a focused drill
+ * works the whole set. Mirrors buildDailyQueue's structure but for one level.
+ */
+function buildLevelQueue(state: CourseState, now: number, levelId: string): QueueItem[] {
+  const levelCards = getLevelCardKeys(levelId);
+  const due: Extract<QueueItem, { kind: "due" }>[] = [];
+  const fresh: Extract<QueueItem, { kind: "new" }>[] = [];
+  for (const k of levelCards) {
+    const id = cardKeyToString(k);
+    const card = state.cards.get(id);
+    if (card) {
+      if (card.due <= now) due.push({ kind: "due", cardKey: id, due: card.due, levelId });
+    } else {
+      fresh.push({ kind: "new", cardKey: id, levelId });
+    }
+  }
+  due.sort((a, b) => a.due - b.due);
+  return [...due, ...fresh];
+}
+
+/** Construct a PracticeSession from a course state + a pre-built queue. */
+function makeSession(state: CourseState, queue: QueueItem[]): PracticeSession {
+  return {
+    queue,
+    cards: new Map(state.cards),
+    correctCount: 0,
+    wrongCount: 0,
+    slowCount: 0,
+    streak: 0,
+    bestStreak: 0,
+    status: queue.length === 0 ? "complete" : "active",
+  };
 }

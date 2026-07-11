@@ -5,6 +5,7 @@ import {
   getLevelCardKeys,
   isLevelMastered,
   isLevelUnlocked,
+  levelStatus,
   nextPlayableLevels,
   masteredLevelCount,
   type CardMap,
@@ -253,6 +254,67 @@ describe("isLevelUnlocked", () => {
         expect(isLevelUnlocked(state, level.id)).toBe(false);
       }
     }
+  });
+});
+
+describe("levelStatus (browser display status)", () => {
+  const branch = getBranch("reading-recognition");
+  const first = branch.levels[0];
+  const second = branch.levels[1];
+  const THRESHOLD = { ease: 2.5, intervalDays: 8 };
+
+  it("a locked level (prior level not mastered) is 'locked'", () => {
+    const state: CourseState = { cards: new Map(), threshold: THRESHOLD };
+    expect(levelStatus(state, second.id)).toBe("locked");
+  });
+
+  it("an unlocked level with no entered cards is 'ready' (fresh start)", () => {
+    const state: CourseState = { cards: new Map(), threshold: THRESHOLD };
+    expect(levelStatus(state, first.id)).toBe("ready");
+  });
+
+  it("an unlocked level with some entered (but not mastered) cards is 'in-progress'", () => {
+    const keys = getLevelCardKeys(first.id);
+    const cards: CardMap = new Map();
+    // Enter just the first card as fresh (started but not mastered).
+    cards.set(cardKeyToString(keys[0]), fresh());
+    const state: CourseState = { cards, threshold: THRESHOLD };
+    expect(levelStatus(state, first.id)).toBe("in-progress");
+  });
+
+  it("a fully mastered level is 'mastered'", () => {
+    const state = stateMasteringFirstNLevels("reading-recognition", 1);
+    expect(levelStatus(state, first.id)).toBe("mastered");
+  });
+
+  it("mastering level 1 promotes level 2 from 'locked' to 'ready'", () => {
+    // stateMasteringFirstNLevels seeds EVERY level's cards (mastered or fresh),
+    // which would make level 2 look "started". For a clean 'ready' test we seed
+    // ONLY level 1's cards as mastered and leave level 2 entirely un-entered.
+    expect(levelStatus({ cards: new Map(), threshold: THRESHOLD }, second.id)).toBe("locked");
+
+    const cards: CardMap = new Map();
+    for (const k of getLevelCardKeys(first.id)) cards.set(cardKeyToString(k), mastered());
+    const after: CourseState = { cards, threshold: THRESHOLD };
+    expect(levelStatus(after, second.id)).toBe("ready");
+  });
+
+  it("course-browser contract: a fresh tree renders level 1 'ready', everything else 'locked'", () => {
+    // This is the smoke test for the browser: from an empty card map (a brand-
+    // new learner), the derived statuses the browser renders are exactly
+    // [ready, locked, locked, ...] across the whole reading branch.
+    const state: CourseState = { cards: new Map(), threshold: THRESHOLD };
+    const statuses = branch.levels.map((l) => levelStatus(state, l.id));
+    expect(statuses[0]).toBe("ready");
+    expect(statuses.slice(1).every((s) => s === "locked")).toBe(true);
+  });
+
+  it("course-browser contract: mastering level 1 renders it 'mastered' and level 2 'ready'", () => {
+    const cards: CardMap = new Map();
+    for (const k of getLevelCardKeys(first.id)) cards.set(cardKeyToString(k), mastered());
+    const state: CourseState = { cards, threshold: THRESHOLD };
+    expect(levelStatus(state, first.id)).toBe("mastered");
+    expect(levelStatus(state, second.id)).toBe("ready");
   });
 });
 

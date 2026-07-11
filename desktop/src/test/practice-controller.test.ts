@@ -8,6 +8,7 @@
 import { describe, it, expect } from "vitest";
 import {
   createSession,
+  createLevelSession,
   judgeAnswer,
   currentCardKey,
   timeLimitMs,
@@ -132,6 +133,64 @@ describe("createSession", () => {
 });
 
 // --- currentCardKey ----------------------------------------------------------
+
+describe("createLevelSession (level-scoped drill)", () => {
+  const frontierLevelId = getBranch("reading-recognition").levels[0].id; // treble line-notes (5 cards)
+
+  it("builds an active session from a fresh level's full card set (all new)", () => {
+    const state = freshState();
+    const session = createLevelSession(state, NOW, frontierLevelId);
+    expect(session.status).toBe("active");
+    // The frontier level (treble line-notes) has exactly 5 cards; all are new.
+    expect(session.queue.length).toBe(5);
+    expect(session.queue.every((q) => q.kind === "new")).toBe(true);
+  });
+
+  it("scopes the queue to ONLY that level's cards (no other levels bleed in)", () => {
+    const state = freshState();
+    const session = createLevelSession(state, NOW, frontierLevelId);
+    const levelKeys = new Set(getLevelCardKeys(frontierLevelId).map((k) => cardKeyToString(k)));
+    for (const item of session.queue) {
+      expect(levelKeys.has(item.cardKey)).toBe(true);
+    }
+  });
+
+  it("puts due cards first, then new cards, when the level is partially practiced", () => {
+    // Enter one card as overdue; leave the rest new.
+    const cards: CardMap = new Map();
+    const levelKeys = getLevelCardKeys(frontierLevelId);
+    cards.set(cardKeyToString(levelKeys[0]), { ...freshCard(), reps: 1, interval: 1, due: NOW - 1000 });
+    const state: CourseState = { cards, threshold: DEFAULT_THRESHOLD };
+
+    const session = createLevelSession(state, NOW, frontierLevelId);
+    // First item is the due card; the rest are new.
+    expect(session.queue[0].kind).toBe("due");
+    expect(session.queue[0].cardKey).toBe(cardKeyToString(levelKeys[0]));
+    expect(session.queue.slice(1).every((q) => q.kind === "new")).toBe(true);
+    expect(session.queue.length).toBe(levelKeys.length); // the due one + the rest new
+  });
+
+  it("completes immediately if the level has no due or new cards (all entered + not due)", () => {
+    // Every card entered with a future due time -> nothing due, nothing new.
+    const cards: CardMap = new Map();
+    for (const k of getLevelCardKeys(frontierLevelId)) {
+      cards.set(cardKeyToString(k), { ...freshCard(), reps: 1, interval: 1, due: NOW + DAY });
+    }
+    const state: CourseState = { cards, threshold: DEFAULT_THRESHOLD };
+    const session = createLevelSession(state, NOW, frontierLevelId);
+    expect(session.status).toBe("complete");
+    expect(session.queue.length).toBe(0);
+  });
+
+  it("shares the judgeAnswer mechanic — answering correct pops the queue", () => {
+    const state = freshState();
+    let session = createLevelSession(state, NOW, frontierLevelId);
+    const before = session.queue.length;
+    session = judgeAnswer(session, "correct", NOW, 900);
+    expect(session.queue.length).toBe(before - 1);
+    expect(session.correctCount).toBe(1);
+  });
+});
 
 describe("currentCardKey", () => {
   it("returns the front queue item's key while active", () => {

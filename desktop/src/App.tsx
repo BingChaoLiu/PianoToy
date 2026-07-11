@@ -23,8 +23,7 @@ import { CountdownOverlay } from "@/components/CountdownOverlay";
 import { SongSwitcher } from "@/components/SongSwitcher";
 import { ScoreModeSelector } from "@/components/ScoreModeSelector";
 import { PracticeStatusOverlay } from "@/components/PracticeStatusOverlay";
-import { NoteReadingStage } from "@/components/NoteReadingStage";
-import { NoteReadingSummary } from "@/components/NoteReadingSummary";
+import { NoteReadingMode } from "@/components/NoteReadingMode";
 import { useKeyboardHotkeys } from "@/lib/keyboard-hotkeys";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useSongStore } from "@/store/useSongStore";
@@ -38,7 +37,6 @@ import { useScorePracticeStore, type ScorePracticeMode } from "@/store/useScoreP
 import { useScoreViewStore } from "@/store/useScoreViewStore";
 import { usePlaybackModeStore } from "@/store/usePlaybackModeStore";
 import { useScoreLibraryStore } from "@/store/useScoreLibraryStore";
-import { useNoteReadingStore } from "@/store/useNoteReadingStore";
 import { migrateIndexedDbToFs } from "@/lib/score-storage/migration";
 import { stopAllSynthVoices } from "@/lib/synth";
 import { resetScheduledFlags } from "@/lib/playback-scheduler";
@@ -64,7 +62,6 @@ export function App() {
   const [countdownActive, setCountdownActive] = useState(false);
   const [songSwitcherOpen, setSongSwitcherOpen] = useState(false);
   const [showScoreModeSelector, setShowScoreModeSelector] = useState(false);
-  const [showReadingSummary, setShowReadingSummary] = useState(false);
   const [practiceState, setPracticeState] = useState<"idle" | "waiting-to-start" | "countdown-to-start" | "playing" | "paused" | "countdown-to-resume">("idle");
 
   const octave = useSettingsStore((s) => s.octave);
@@ -439,36 +436,14 @@ export function App() {
     );
   }
 
-  // Note-reading mode: dedicated white-staff trainer screen.
+  // Note-reading mode: course browser (home base) + practice stage.
   if (mode === "note-reading") {
-    const handleReadingExit = () => {
-      const s = useNoteReadingStore.getState();
-      const answered = (s.session?.correctCount ?? 0) + (s.session?.wrongCount ?? 0);
-      // Only show summary if the user actually practiced something.
-      if (answered > 0) {
-        setShowReadingSummary(true);
-        return;
-      }
-      void useNoteReadingStore.getState().exitSession();
-      useInputStore.getState().clear();
-      goHome();
-    };
     return (
       <div className="relative h-full w-full">
-        <NoteReadingStage
+        <NoteReadingMode
           onOpenSettings={() => setSettingsOpen(true)}
-          onExit={handleReadingExit}
+          onExitHome={goHome}
         />
-        {showReadingSummary && (
-          <NoteReadingSummary
-            onClose={() => {
-              setShowReadingSummary(false);
-              void useNoteReadingStore.getState().exitSession();
-              useInputStore.getState().clear();
-              goHome();
-            }}
-          />
-        )}
         <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
         <DropOverlay onFiles={(fs) => fs.forEach(handleFile)} />
       </div>

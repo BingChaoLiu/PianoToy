@@ -272,6 +272,41 @@ export interface Translation {
     /** Label for the soft-timer countdown bar. */
     fluency: string;
   };
+  course: {
+    /** Browser screen title. */
+    title: string;
+    /** Big CTA that plays the full daily queue across all unlocked levels. */
+    daily_mix: string;
+    /** Daily-mix subtitle when there are due/new cards. {n} = total queue size. */
+    cards_due_today: string;
+    /** Daily-mix subtitle when the queue is empty. */
+    review_cleared: string;
+    /** Button label to start a level-scoped drill. */
+    practice: string;
+    /** Status badge: locked level. */
+    status_locked: string;
+    /** Status badge: unlocked, not started. */
+    status_ready: string;
+    /** Status badge: started but not mastered. */
+    status_in_progress: string;
+    /** Status badge: mastered. */
+    status_mastered: string;
+    /** Branch/level badge: coming soon (not playable yet). */
+    coming_soon: string;
+    /** Branch name: reading-recognition. */
+    branch_reading: string;
+    /** Branch name: keyboard-location. */
+    branch_keyboard: string;
+    /** Branch name: interval-recognition. */
+    branch_interval: string;
+    /** Branch name: key-signature-recognition. */
+    branch_key_signature: string;
+    /** Level titles keyed by the level's titleKey suffix: course.reading.<track>.<kind>. */
+    reading: {
+      treble: Record<string, string>;
+      bass: Record<string, string>;
+    };
+  };
   updater: {
     new_version: string;
     title: string;
