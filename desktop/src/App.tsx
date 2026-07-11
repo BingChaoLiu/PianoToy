@@ -443,12 +443,13 @@ export function App() {
   if (mode === "note-reading") {
     const handleReadingExit = () => {
       const s = useNoteReadingStore.getState();
+      const answered = (s.session?.correctCount ?? 0) + (s.session?.wrongCount ?? 0);
       // Only show summary if the user actually practiced something.
-      if (s.phase !== "prompt" && (s.correctCount + s.wrongCount) > 0) {
+      if (answered > 0) {
         setShowReadingSummary(true);
         return;
       }
-      useNoteReadingStore.getState().resetSession();
+      void useNoteReadingStore.getState().exitSession();
       useInputStore.getState().clear();
       goHome();
     };
@@ -462,7 +463,7 @@ export function App() {
           <NoteReadingSummary
             onClose={() => {
               setShowReadingSummary(false);
-              useNoteReadingStore.getState().resetSession();
+              void useNoteReadingStore.getState().exitSession();
               useInputStore.getState().clear();
               goHome();
             }}

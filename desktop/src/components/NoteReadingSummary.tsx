@@ -11,9 +11,10 @@ import { formatTime } from "@/lib/note-utils";
 export function NoteReadingSummary({ onClose }: { onClose: () => void }) {
   const t = useT();
   const setMode = useAppModeStore((s) => s.setMode);
-  const correct = useNoteReadingStore((s) => s.correctCount);
-  const wrong = useNoteReadingStore((s) => s.wrongCount);
-  const bestStreak = useNoteReadingStore((s) => s.bestStreak);
+  const correct = useNoteReadingStore((s) => s.session?.correctCount ?? 0);
+  const wrong = useNoteReadingStore((s) => s.session?.wrongCount ?? 0);
+  const slow = useNoteReadingStore((s) => s.session?.slowCount ?? 0);
+  const bestStreak = useNoteReadingStore((s) => s.session?.bestStreak ?? 0);
   const total = correct + wrong;
   const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
   const startTime = useNoteReadingStore((s) => s.startTime);
@@ -50,6 +51,12 @@ export function NoteReadingSummary({ onClose }: { onClose: () => void }) {
             <div className="text-[10px] text-muted">{t("stats.accuracy")}</div>
             <div className="text-sm font-semibold text-fg">{accuracy}%</div>
           </div>
+          {slow > 0 && (
+            <div className="col-span-2 rounded bg-bg-2 px-3 py-2">
+              <div className="text-[10px] text-muted">{t("reading.slow")}</div>
+              <div className="text-sm font-semibold text-fg">{slow}</div>
+            </div>
+          )}
           <div className="col-span-2 rounded bg-bg-2 px-3 py-2">
             <div className="text-[10px] text-muted">{t("result.time")}</div>
             <div className="text-sm font-semibold text-fg">{formatTime(elapsed)}</div>

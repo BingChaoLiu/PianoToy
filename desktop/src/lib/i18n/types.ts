@@ -255,6 +255,22 @@ export interface Translation {
     best_streak: string;
     summary_title: string;
     continue: string;
+    /** Shown while the daily queue loads from persisted progress. */
+    loading: string;
+    /** "What note is this?" prompt above the letter buttons. */
+    prompt_name: string;
+    /** "Slow" outcome label (timeout). */
+    slow: string;
+    /** Daily review queue finished — nothing left to practice today. */
+    complete: string;
+    /** "Remaining" count of cards left in today's queue. */
+    remaining: string;
+    /** Progression cue: a level was mastered. */
+    level_mastered: string;
+    /** Button to dismiss the progression cue. */
+    keep_going: string;
+    /** Label for the soft-timer countdown bar. */
+    fluency: string;
   };
   updater: {
     new_version: string;
