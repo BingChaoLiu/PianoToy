@@ -140,6 +140,41 @@ fn delete_score_folder(app: tauri::AppHandle, folder: String) -> Result<(), Stri
     Ok(())
 }
 
+/// Resolve `<appLocalDataDir>/progress.json` — the note-reading trainer's
+/// SM-2 card-state file. Fixed filename (not user input), so unlike the scores
+/// folder there is no folder-name validation or path-escape check to do.
+fn progress_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let base = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| format!("app_local_data_dir failed: {}", e))?;
+    Ok(base.join("progress.json"))
+}
+
+/// Read the raw bytes of progress.json. Returns an empty vector if the file
+/// does not exist yet (fresh learner); the JS layer treats empty as "no state".
+#[tauri::command]
+fn read_progress(app: tauri::AppHandle) -> Result<Vec<u8>, String> {
+    let p = progress_path(&app)?;
+    if !p.exists() {
+        return Ok(Vec::new());
+    }
+    fs::read(&p).map_err(|e| format!("failed to read {}: {}", p.display(), e))
+}
+
+/// Write progress.json, creating the app-local-data dir if needed (it usually
+/// already exists because the scores root is created on first score import,
+/// but a note-reading-only user may never have imported a score).
+#[tauri::command]
+fn save_progress(app: tauri::AppHandle, bytes: Vec<u8>) -> Result<(), String> {
+    let p = progress_path(&app)?;
+    if let Some(parent) = p.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("create_dir_all {} failed: {}", parent.display(), e))?;
+    }
+    fs::write(&p, &bytes).map_err(|e| format!("failed to write {}: {}", p.display(), e))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
@@ -157,6 +192,8 @@ pub fn run() {
       get_scores_root,
       list_score_folders,
       delete_score_folder,
+      read_progress,
+      save_progress,
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
