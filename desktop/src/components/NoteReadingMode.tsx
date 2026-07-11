@@ -40,6 +40,12 @@ export function NoteReadingMode({
   // --- Exit handlers (practice → browser/home) ---
   const handleStageExit = () => {
     const s = useNoteReadingStore.getState();
+    // A challenge run that ended shows its own result panel with onExit=here;
+    // treat that as a normal return to the browser (no double summary).
+    if (s.runEnded && s.practiceMode === "challenge") {
+      void returnToBrowser();
+      return;
+    }
     const answered = (s.session?.correctCount ?? 0) + (s.session?.wrongCount ?? 0);
     if (answered > 0) {
       setShowSummary(true);
@@ -47,6 +53,16 @@ export function NoteReadingMode({
     }
     // Nothing practiced — drop straight back to the browser.
     void returnToBrowser();
+  };
+
+  // Retry: re-launch the same scope (daily-mix or level) in the current mode.
+  const handleRetry = async () => {
+    const scope = useNoteReadingStore.getState().sessionScope;
+    if (scope === "daily-mix" || scope === null) {
+      await useNoteReadingStore.getState().startSession();
+    } else {
+      await useNoteReadingStore.getState().startLevelSession(scope);
+    }
   };
 
   const returnToBrowser = async () => {
@@ -74,7 +90,11 @@ export function NoteReadingMode({
 
   return (
     <div className="relative h-full w-full">
-      <NoteReadingStage onOpenSettings={onOpenSettings} onExit={handleStageExit} />
+      <NoteReadingStage
+        onOpenSettings={onOpenSettings}
+        onExit={handleStageExit}
+        onRetry={handleRetry}
+      />
       {showSummary && (
         <NoteReadingSummary
           onClose={() => {

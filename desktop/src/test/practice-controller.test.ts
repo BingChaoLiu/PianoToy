@@ -16,6 +16,7 @@ import {
   nameForPitch,
   letterForPitch,
   levelJustMastered,
+  challengeActionFor,
   DEFAULT_NEW_CARDS_PER_DAY,
   DEFAULT_THRESHOLD,
   FIRST_CARD_TIME_LIMIT_MS,
@@ -429,5 +430,29 @@ describe("levelJustMastered", () => {
       curr.set(key(k), { ...freshCard(), reps: 1, interval: 1 }); // still short
     });
     expect(levelJustMastered(prev, curr, frontier, DEFAULT_THRESHOLD)).toBe(false);
+  });
+});
+
+// --- challengeActionFor (challenge-mode routing) ----------------------------
+
+describe("challengeActionFor", () => {
+  it("routes a correct answer to a game 'hit'", () => {
+    expect(challengeActionFor("correct")).toBe("hit");
+  });
+
+  it("routes a wrong answer to a game 'miss' (costs HP, breaks combo)", () => {
+    expect(challengeActionFor("wrong")).toBe("miss");
+  });
+
+  it("routes a slow/timeout to a game 'miss' (costs HP per the spec)", () => {
+    expect(challengeActionFor("slow")).toBe("miss");
+  });
+
+  it("is exhaustive over the three outcomes", () => {
+    // Guard: every Outcome resolves to a defined action (no undefined routing).
+    for (const o of ["correct", "wrong", "slow"] as const) {
+      const a = challengeActionFor(o);
+      expect(a === "hit" || a === "miss").toBe(true);
+    }
   });
 });

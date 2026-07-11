@@ -12,6 +12,7 @@
 // live in practice-controller.ts and are unit-tested there.
 
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import {
   createSession,
   createLevelSession,
@@ -20,6 +21,7 @@ import {
   levelJustMastered,
   nameForPitch,
   cardKeyPitchOf,
+  challengeActionFor,
   DEFAULT_NEW_CARDS_PER_DAY,
   DEFAULT_THRESHOLD,
   type PracticeSession,
@@ -32,6 +34,9 @@ import {
   flushPendingSave,
   type ProgressFile,
 } from "@/lib/progress-storage";
+import { useRhythmGameStore } from "@/store/useRhythmGameStore";
+import { usePracticeStore } from "@/store/usePracticeStore";
+import { type ScorePracticeMode } from "@/store/useScorePracticeStore";
 
 export type ReadingPhase = "loading" | "active" | "complete";
 
@@ -56,10 +61,20 @@ interface NoteReadingState {
   judge: "none" | "correct" | "wrong" | "slow";
   /** Pitch of the card being judged (the flash renders THIS note, not the next). */
   judgePitch: number | null;
+  /** Practice vs challenge mode (T7). Reuses the existing ScorePracticeMode enum. */
+  practiceMode: ScorePracticeMode;
+  /** What scope the current session runs: "daily-mix" or a level id. */
+  sessionScope: "daily-mix" | string | null;
+  /** True once a challenge run has ended (HP empty or queue cleared). */
+  runEnded: boolean;
 
   startSession: () => Promise<void>;
   /** Start a level-scoped drill session (T6): queue restricted to one level. */
   startLevelSession: (levelId: string) => Promise<void>;
+  /** Set practice/challenge mode (T7). */
+  setPracticeMode: (m: ScorePracticeMode) => void;
+  /** Switch mode and re-launch the current scope in the new mode (T7). */
+  switchPracticeMode: (m: ScorePracticeMode) => Promise<void>;
   answerLetter: (letter: string) => void;
   /** Apply a timeout outcome (the adaptive timer expired). */
   answerTimeout: () => void;
@@ -90,81 +105,43 @@ function progressFromSession(session: PracticeSession, base: ProgressFile): Prog
 /**
  * Install a freshly-built session into the store: set phase + appearAt from the
  * session's status and stamp the start time. Shared by startSession (daily mix)
- * and startLevelSession (level drill) so the two launch paths stay in sync.
+ * and startLevelSession (level drill). In challenge mode it also (re)starts the
+ * rhythm-game layer so the HUD has fresh HP/combo/score.
  */
 function activateSession(
   set: (partial: Partial<NoteReadingState>) => void,
+  get: () => NoteReadingState,
+  scope: "daily-mix" | string,
   progress: ProgressFile,
   session: PracticeSession,
 ): void {
+  const challenge = get().practiceMode === "challenge";
+  if (challenge) {
+    useRhythmGameStore.getState().resetSession();
+    useRhythmGameStore.getState().startSession();
+    usePracticeStore.getState().setEnabled(true);
+  } else {
+    // Practice mode: no game layer. Ensure any stale challenge state is cleared.
+    usePracticeStore.getState().setEnabled(false);
+    useRhythmGameStore.getState().resetSession();
+  }
   set({
     progress,
     session,
+    sessionScope: scope,
     phase: session.status === "complete" ? "complete" : "active",
     currentCardAppearAt: session.status === "active" ? performance.now() : null,
     startTime: performance.now(),
     lastProgressionCue: null,
     judge: "none",
     judgePitch: null,
+    runEnded: false,
   });
 }
 
-export const useNoteReadingStore = create<NoteReadingState>((set, get) => ({
-  phase: "loading",
-  session: null,
-  progress: null,
-  currentCardAppearAt: null,
-  startTime: null,
-  lastProgressionCue: null,
-  judge: "none",
-  judgePitch: null,
-
-  startSession: async () => {
-    const progress = await loadProgress(DEFAULT_THRESHOLD);
-    const state = courseStateFromProgress(progress);
-    const session = createSession(state, Date.now(), { newCardsPerDay: DEFAULT_NEW_CARDS_PER_DAY });
-    activateSession(set, progress, session);
-  },
-
-  startLevelSession: async (levelId) => {
-    const progress = await loadProgress(DEFAULT_THRESHOLD);
-    const state = courseStateFromProgress(progress);
-    const session = createLevelSession(state, Date.now(), levelId);
-    activateSession(set, progress, session);
-  },
-
-  answerLetter: (letter) => {
-    const s = get();
-    if (!s.session || s.phase !== "active") return;
-    const ck = currentCardKey(s.session);
-    if (!ck) return;
-
-    const pitch = cardKeyPitchOf(ck);
-    const correct = nameForPitch(pitch);
-    const outcome: Outcome = letter === correct ? "correct" : "wrong";
-    const reactionMs = measuredReaction(s);
-    applyOutcome(s, outcome, set, reactionMs, pitch);
-  },
-
-  answerTimeout: () => {
-    const s = get();
-    if (!s.session || s.phase !== "active") return;
-    const ck = currentCardKey(s.session);
-    // Timeout = no real reaction sample, so do NOT feed reactionMs to SM-2
-    // (forwarding the full limit would inflate RMA and grow the next deadline).
-    applyOutcome(s, "slow", set, undefined, ck ? cardKeyPitchOf(ck) : null);
-  },
-
-  clearJudge: () => set({ judge: "none", judgePitch: null }),
-
-  exitSession: async () => {
-    // Guarantee the last card-map snapshot is durable before the mode tears down.
-    try {
-      await flushPendingSave();
-    } catch {
-      // non-fatal: progress is best-effort; the session isn't blocked on disk.
-    }
-    set({
+export const useNoteReadingStore = create<NoteReadingState>()(
+  persist(
+    (set, get) => ({
       phase: "loading",
       session: null,
       progress: null,
@@ -173,11 +150,97 @@ export const useNoteReadingStore = create<NoteReadingState>((set, get) => ({
       lastProgressionCue: null,
       judge: "none",
       judgePitch: null,
-    });
-  },
+      practiceMode: "practice",
+      sessionScope: null,
+      runEnded: false,
 
-  dismissProgressionCue: () => set({ lastProgressionCue: null }),
-}));
+      startSession: async () => {
+        const progress = await loadProgress(DEFAULT_THRESHOLD);
+        const state = courseStateFromProgress(progress);
+        const session = createSession(state, Date.now(), { newCardsPerDay: DEFAULT_NEW_CARDS_PER_DAY });
+        activateSession(set, get, "daily-mix", progress, session);
+      },
+
+      startLevelSession: async (levelId) => {
+        const progress = await loadProgress(DEFAULT_THRESHOLD);
+        const state = courseStateFromProgress(progress);
+        const session = createLevelSession(state, Date.now(), levelId);
+        activateSession(set, get, levelId, progress, session);
+      },
+
+      setPracticeMode: (m) => set({ practiceMode: m }),
+
+      switchPracticeMode: async (m) => {
+        set({ practiceMode: m });
+        // Re-launch the current scope in the new mode so the game layer matches.
+        const scope = get().sessionScope;
+        if (!scope) return;
+        if (scope === "daily-mix") {
+          await get().startSession();
+        } else {
+          await get().startLevelSession(scope);
+        }
+      },
+
+      answerLetter: (letter) => {
+        const s = get();
+        if (!s.session || s.phase !== "active") return;
+        if (s.practiceMode === "challenge" && s.runEnded) return; // run over
+        const ck = currentCardKey(s.session);
+        if (!ck) return;
+
+        const pitch = cardKeyPitchOf(ck);
+        const correct = nameForPitch(pitch);
+        const outcome: Outcome = letter === correct ? "correct" : "wrong";
+        const reactionMs = measuredReaction(s);
+        applyOutcome(s, outcome, set, reactionMs, pitch);
+      },
+
+      answerTimeout: () => {
+        const s = get();
+        if (!s.session || s.phase !== "active") return;
+        if (s.practiceMode === "challenge" && s.runEnded) return; // run over
+        const ck = currentCardKey(s.session);
+        // Timeout = no real reaction sample, so do NOT feed reactionMs to SM-2
+        // (forwarding the full limit would inflate RMA and grow the next deadline).
+        applyOutcome(s, "slow", set, undefined, ck ? cardKeyPitchOf(ck) : null);
+      },
+
+      clearJudge: () => set({ judge: "none", judgePitch: null }),
+
+      exitSession: async () => {
+        // Guarantee the last card-map snapshot is durable before the mode tears down.
+        try {
+          await flushPendingSave();
+        } catch {
+          // non-fatal: progress is best-effort; the session isn't blocked on disk.
+        }
+        // Tear down the game layer so it doesn't bleed into other modes.
+        usePracticeStore.getState().setEnabled(false);
+        useRhythmGameStore.getState().resetSession();
+        set({
+          phase: "loading",
+          session: null,
+          progress: null,
+          currentCardAppearAt: null,
+          startTime: null,
+          lastProgressionCue: null,
+          judge: "none",
+          judgePitch: null,
+          sessionScope: null,
+          runEnded: false,
+        });
+      },
+
+      dismissProgressionCue: () => set({ lastProgressionCue: null }),
+    }),
+    {
+      name: "piano.note-reading",
+      version: 2,
+      partialize: (s) => ({ practiceMode: s.practiceMode }),
+    },
+  ),
+);
 
 // --- internal: shared outcome application -----------------------------------
 
@@ -207,12 +270,39 @@ function applyOutcome(
 
   const now = Date.now();
   const prevCards = s.session.cards;
+  // SM-2 ALWAYS updates — the learning value is never suspended for the game.
   const next = judgeAnswer(s.session, outcome, now, reactionMs);
 
   // Persist the updated card map (debounced — coalesces rapid answers).
   if (s.progress) {
     const file = progressFromSession(next, s.progress);
     saveProgressDebounced(file);
+  }
+
+  // --- Challenge game layer (T7) -------------------------------------------
+  // Lives in its own store so SM-2's "wrong is rescheduled" and HP's "wrong
+  // costs you" never conflict. Only active in challenge mode.
+  let runEnded = s.runEnded;
+  let failed = false;
+  if (s.practiceMode === "challenge") {
+    const rg = useRhythmGameStore.getState();
+    const action = challengeActionFor(outcome);
+    if (action === "hit") {
+      rg.onHit(0); // reading has no song-time alignment; reward all corrects at full timing
+    } else {
+      rg.onMiss(); // wrong + timeout cost HP and break combo (per spec)
+    }
+    // Update the HUD progress bar from the remaining queue.
+    const total = s.session.queue.length;
+    const remaining = next.queue.length;
+    rg.setProgress(total > 0 ? 1 - remaining / total : 1);
+
+    failed = rg.isFailed; // HP hit 0
+    const cleared = next.status === "complete"; // queue emptied (success)
+    if ((failed || cleared) && !rg.isFinished) {
+      rg.finishSession();
+      runEnded = true;
+    }
   }
 
   // Detect a level flipping to mastered for the progression cue. The level id
@@ -226,14 +316,20 @@ function applyOutcome(
     }
   }
 
+  // On a failed challenge run, freeze the visible queue (stop advancing) but
+  // still persist the post-answer SM-2 state so learning is recorded. The
+  // session snapshot shown is the pre-advance one; progress reflects `next`.
+  const frozen = failed;
+  const persistedProgress = s.progress ? progressFromSession(next, s.progress) : s.progress;
   set({
-    session: next,
-    progress: s.progress ? progressFromSession(next, s.progress) : s.progress,
+    session: frozen ? s.session : next,
+    progress: persistedProgress,
     judge: outcome,
     judgePitch,
-    currentCardAppearAt: next.status === "active" ? performance.now() : null,
-    phase: next.status === "complete" ? "complete" : "active",
+    currentCardAppearAt: next.status === "active" && !frozen ? performance.now() : null,
+    phase: frozen ? "active" : next.status === "complete" ? "complete" : "active",
     lastProgressionCue: cue ?? s.lastProgressionCue,
+    runEnded,
   });
 }
 

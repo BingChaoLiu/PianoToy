@@ -151,6 +151,18 @@ export function timerFrac(elapsedMs: number, limitMs: number): { frac: number; r
   return { frac, red: 1 - frac };
 }
 
+// --- Challenge-mode routing --------------------------------------------------
+
+/**
+ * Map a practice outcome to the rhythm-game action it triggers in challenge
+ * mode (T7). Correct → "hit" (combo + score + HP recovery); wrong AND slow →
+ * "miss" (HP loss + combo break), per the spec's "wrong answers and timeouts
+ * cost HP". Pure so the store's routing is unit-testable in isolation.
+ */
+export function challengeActionFor(outcome: Outcome): "hit" | "miss" {
+  return outcome === "correct" ? "hit" : "miss";
+}
+
 // --- Judging (the core reducer) ----------------------------------------------
 
 /**

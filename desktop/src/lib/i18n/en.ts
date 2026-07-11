@@ -252,6 +252,9 @@ const lang: Translation = {
     level_mastered: "Level mastered!",
     keep_going: "Keep going",
     fluency: "Fluency",
+    practice_mode: "Practice",
+    challenge_mode: "Challenge",
+    run_result_title: "Challenge Result",
   },
   course: {
     title: "Course",

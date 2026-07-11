@@ -271,6 +271,12 @@ export interface Translation {
     keep_going: string;
     /** Label for the soft-timer countdown bar. */
     fluency: string;
+    /** Practice/challenge toggle: practice mode label (T7). */
+    practice_mode: string;
+    /** Practice/challenge toggle: challenge mode label (T7). */
+    challenge_mode: string;
+    /** Challenge run-result panel title (T7). */
+    run_result_title: string;
   };
   course: {
     /** Browser screen title. */

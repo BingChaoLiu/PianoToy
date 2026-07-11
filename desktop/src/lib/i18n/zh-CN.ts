@@ -252,6 +252,9 @@ const lang: Translation = {
     level_mastered: "\u5173\u5361\u6210\u529f\uff01",
     keep_going: "\u7ee7\u7eed\u7ec3\u4e60",
     fluency: "\u6d41\u7545\u5ea6",
+    practice_mode: "\u7ec3\u4e60",
+    challenge_mode: "\u6311\u6218",
+    run_result_title: "\u6311\u6218\u7ed3\u679c",
   },
   course: {
     title: "\u8bfe\u7a0b",

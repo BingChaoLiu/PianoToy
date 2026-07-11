@@ -13,6 +13,8 @@ import {
   useNoteReadingStore,
   selectCurrentPitch,
 } from "@/store/useNoteReadingStore";
+import { RhythmGameHUD } from "@/components/RhythmGameHUD";
+import { ReadingChallengeResult } from "@/components/ReadingChallengeResult";
 import { drawReadingStaff } from "@/lib/reading-staff-renderer";
 import {
   LETTER_NAMES,
@@ -32,9 +34,12 @@ const TIMER_TICK_MS = 50; // countdown bar refresh cadence
 export function NoteReadingStage({
   onOpenSettings,
   onExit,
+  onRetry,
 }: {
   onOpenSettings: () => void;
   onExit: () => void;
+  /** Retry a challenge run (re-launch the same scope). Practice mode calls onExit. */
+  onRetry?: () => void;
 }) {
   const t = useT();
 
@@ -42,12 +47,17 @@ export function NoteReadingStage({
   const session = useNoteReadingStore((s) => s.session);
   const judge = useNoteReadingStore((s) => s.judge);
   const lastProgressionCue = useNoteReadingStore((s) => s.lastProgressionCue);
+  const practiceMode = useNoteReadingStore((s) => s.practiceMode);
+  const runEnded = useNoteReadingStore((s) => s.runEnded);
   const startSession = useNoteReadingStore((s) => s.startSession);
   const answerLetter = useNoteReadingStore((s) => s.answerLetter);
   const answerTimeout = useNoteReadingStore((s) => s.answerTimeout);
   const clearJudge = useNoteReadingStore((s) => s.clearJudge);
   const dismissProgressionCue = useNoteReadingStore((s) => s.dismissProgressionCue);
+  const switchPracticeMode = useNoteReadingStore((s) => s.switchPracticeMode);
   const synthEnabled = useSettingsStore((s) => s.synthEnabled);
+
+  const isChallenge = practiceMode === "challenge";
 
   // Live countdown state (kept out of the store — it's purely presentational).
   const [elapsedFrac, setElapsedFrac] = useState(1);
@@ -196,6 +206,23 @@ export function NoteReadingStage({
             {t("reading.back")}
           </Button>
           <span className="text-xs text-muted">{t("reading.mode_label")}</span>
+          {/* Practice | Challenge toggle (T7). Switching re-launches the current
+              scope in the new mode, so it's disabled mid-answer-flash. */}
+          <div className="flex items-center rounded-md border border-bg-2 bg-bg-2 p-0.5">
+            {(["practice", "challenge"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => void switchPracticeMode(m)}
+                disabled={judge !== "none" || runEnded}
+                className={
+                  "rounded px-2 py-0.5 text-xs transition-colors " +
+                  (practiceMode === m ? "bg-accent text-white" : "text-muted hover:bg-bg-3")
+                }
+              >
+                {m === "practice" ? t("reading.practice_mode") : t("reading.challenge_mode")}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="flex items-center gap-3 text-xs text-muted">
           {phase === "active" && (
@@ -219,6 +246,18 @@ export function NoteReadingStage({
         {/* Staff canvas */}
         <div className="relative flex-1 overflow-hidden">
           <canvas ref={canvasRef} className="block h-full w-full" />
+
+          {/* Challenge HUD (HP / combo / score / progress). The HUD self-gates
+              on the practice flag which the store sets in challenge mode. */}
+          {isChallenge && phase === "active" && <RhythmGameHUD />}
+
+          {/* Challenge run-result panel (HP emptied or queue cleared). */}
+          {isChallenge && runEnded && onRetry && (
+            <ReadingChallengeResult
+              onRetry={onRetry}
+              onExit={onExit}
+            />
+          )}
 
           {/* Loading overlay */}
           {phase === "loading" && (
