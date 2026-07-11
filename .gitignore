@@ -25,6 +25,9 @@ temp/
 # AI assistant artifacts
 .claude/
 .codex/
+# Agent skills setup (/setup-matt-pocock-skills) — local engineering-skill config, not app code
+AGENTS.md
+docs/agents/
 
 # Tauri updater signing keys (NEVER commit these)
 *.tauri.key
