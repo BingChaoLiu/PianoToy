@@ -213,3 +213,44 @@ describe("isSessionComplete", () => {
     expect(isSessionComplete(q)).toBe(false);
   });
 });
+
+// --- extra-card backstop (re-entry fix) --------------------------------------
+// When the strict SM-2 queue (due + new) is empty, the builder falls back to
+// entered-but-not-mastered cards so a learner can always keep practising.
+
+describe("backstop — extra cards when the strict queue is empty", () => {
+  it("offers entered-but-not-mastered cards when no due/new cards exist", () => {
+    // Seed level 0's cards as entered, due in the FUTURE, not mastered.
+    const cards: CardMap = new Map();
+    seedLevels("reading-recognition", 1, answeredCard(DAY), cards); // due tomorrow
+    const state: CourseState = { cards, threshold: THRESHOLD };
+
+    // No due (all future), no new (level 0 fully entered, level 1 locked).
+    const q = buildDailyQueue(state, NOW, DEFAULT_OPTS);
+    expect(q.length).toBeGreaterThan(0);
+    expect(q.every((item) => item.kind === "extra")).toBe(true);
+  });
+
+  it("does NOT include mastered cards in the backstop", () => {
+    // Seed level 0's cards as fully mastered (and due tomorrow).
+    const cards: CardMap = new Map();
+    seedLevels("reading-recognition", 1, masteredCard(DAY), cards);
+    const state: CourseState = { cards, threshold: THRESHOLD };
+
+    const q = buildDailyQueue(state, NOW, DEFAULT_OPTS);
+    // Level 0 mastered (and due future) -> level 1 unlocks and is unentered,
+    // so its NEW cards surface (not "extra" — mastered cards aren't backstop-able).
+    expect(q.every((item) => item.kind === "new")).toBe(true);
+    expect(q.length).toBeGreaterThan(0);
+  });
+
+  it("dedupes shared cards across levels (combined reuses line+space)", () => {
+    const cards: CardMap = new Map();
+    seedLevels("reading-recognition", 3, answeredCard(DAY), cards);
+    const state: CourseState = { cards, threshold: THRESHOLD };
+
+    const q = buildDailyQueue(state, NOW, DEFAULT_OPTS);
+    const ids = q.map((i) => i.cardKey);
+    expect(new Set(ids).size).toBe(ids.length); // no duplicates
+  });
+});

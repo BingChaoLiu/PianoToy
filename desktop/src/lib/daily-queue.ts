@@ -11,16 +11,25 @@
 //      lowest unlocked level that still has cards with no map entry yet
 //      ("new" = never practiced, consistent with T3's lazy-seed model).
 //
-// The two sets are disjoint by construction: a "due" card has a map entry
-// (it was practiced before and got a `due` timestamp); a "new" card has none.
+// Backstop (added to fix the "can't practice again today" deadlock): if the
+// strict SM-2 queue (due + new) is empty, fall back to the learner's ENTERED
+// BUT NOT-YET-MASTERED cards across unlocked levels (frontier first). This
+// respects the spaced-repetition cadence (the strict queue still governs when a
+// card is "officially" due) while letting the learner keep practising whenever
+// they want — unmastered cards genuinely benefit from extra reps.
+//
+// The three sets are disjoint by construction: "due" has a future-ish entry now
+// due; "new" has no entry; "extra" has an entry that's not due and not mastered.
 
 import {
   allLevels,
   cardKeyToString,
   isLevelUnlocked,
+  isLevelMastered,
   type CourseState,
   type Level,
 } from "@/lib/course";
+import { isMastered } from "@/lib/sm2";
 
 export interface DailyQueueOptions {
   /** Max new cards introduced per session. Tunable (default applied by caller). */
@@ -30,11 +39,13 @@ export interface DailyQueueOptions {
 /** A single item in today's queue. `cardKey` is the string form of a CardKey. */
 export type QueueItem =
   | { kind: "due"; cardKey: string; due: number; levelId: string }
-  | { kind: "new"; cardKey: string; levelId: string };
+  | { kind: "new"; cardKey: string; levelId: string }
+  | { kind: "extra"; cardKey: string; levelId: string };
 
 /**
- * Build today's practice queue: due cards (urgent first) then a capped batch of
- * new cards from the frontier level.
+ * Build today's practice queue: due cards (urgent first), then a capped batch of
+ * new cards from the frontier level. If both are empty, fall back to the
+ * entered-but-not-mastered cards so the learner can always keep practising.
  */
 export function buildDailyQueue(
   state: CourseState,
@@ -43,7 +54,9 @@ export function buildDailyQueue(
 ): QueueItem[] {
   const dueItems = collectDueCards(state, now);
   const newItems = collectNewCards(state, opts.newCardsPerDay);
-  return [...dueItems, ...newItems];
+  const strict = [...dueItems, ...newItems];
+  if (strict.length > 0) return strict;
+  return collectExtraCards(state);
 }
 
 /** True iff there is nothing left to practice today. */
@@ -106,4 +119,31 @@ function findFrontierLevel(state: CourseState): Level | null {
     if (hasNew) return level;
   }
   return null;
+}
+
+/**
+ * Backstop queue: entered-but-not-mastered cards across unlocked levels, in
+ * catalog order (so the frontier/lowest level's cards surface first). Only used
+ * when the strict SM-2 queue (due + new) is empty, so a learner who has already
+ * cleared today's assigned cards can still practise — these cards genuinely
+ * benefit from extra reps. Deduplicates shared cards (e.g. "combined" reuses
+ * line/space pitches) via the `seen` set.
+ */
+function collectExtraCards(state: CourseState): QueueItem[] {
+  const seen = new Set<string>();
+  const out: QueueItem[] = [];
+  for (const level of allLevels()) {
+    if (!isLevelUnlocked(state, level.id)) continue;
+    if (isLevelMastered(state, level.id)) continue; // mastered = done
+    for (const cardKey of level.cards) {
+      const id = cardKeyToString(cardKey);
+      if (seen.has(id)) continue; // cards are shared across levels; take once
+      seen.add(id);
+      const card = state.cards.get(id);
+      if (!card) continue; // un-entered -> belongs to "new", not "extra"
+      if (isMastered(card, state.threshold)) continue; // already mastered
+      out.push({ kind: "extra", cardKey: id, levelId: level.id });
+    }
+  }
+  return out;
 }
