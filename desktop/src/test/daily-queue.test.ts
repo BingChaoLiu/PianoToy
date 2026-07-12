@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildDailyQueue,
+  backstopExtraCards,
   isSessionComplete,
   type DailyQueueOptions,
   type QueueItem,
@@ -252,5 +253,60 @@ describe("backstop — extra cards when the strict queue is empty", () => {
     const q = buildDailyQueue(state, NOW, DEFAULT_OPTS);
     const ids = q.map((i) => i.cardKey);
     expect(new Set(ids).size).toBe(ids.length); // no duplicates
+  });
+});
+
+// --- backstopExtraCards (shared helper) --------------------------------------
+// The shared predicate both queue builders use to fill dead time with
+// entered-but-not-mastered cards. Tested in isolation so future changes to
+// either caller can't silently drop backstop coverage (the root cause of two
+// prior re-entry bugs).
+
+describe("backstopExtraCards", () => {
+  /** A card that is entered but NOT mastered (below threshold interval). */
+  function unmasteredCard(): Card {
+    return answeredCard(DAY, { ease: 2.5, interval: 1, reps: 1 }); // due tomorrow, not mastered
+  }
+
+  it("returns entered-but-not-mastered candidates as 'extra' items", () => {
+    const cards: CardMap = new Map([["64:treble:C", unmasteredCard()]]);
+    const state = freshState(cards);
+    const out = backstopExtraCards(state, [{ cardKey: "64:treble:C", levelId: "L1" }]);
+    expect(out).toEqual([{ kind: "extra", cardKey: "64:treble:C", levelId: "L1" }]);
+  });
+
+  it("skips candidates with no card entry yet (those belong to 'new')", () => {
+    const state = freshState(); // empty map
+    const out = backstopExtraCards(state, [{ cardKey: "64:treble:C", levelId: "L1" }]);
+    expect(out).toEqual([]);
+  });
+
+  it("skips mastered candidates (nothing left to learn)", () => {
+    const cards: CardMap = new Map([["64:treble:C", masteredCard(DAY)]]);
+    const state = freshState(cards);
+    const out = backstopExtraCards(state, [{ cardKey: "64:treble:C", levelId: "L1" }]);
+    expect(out).toEqual([]);
+  });
+
+  it("dedupes candidates that share a cardKey (keeps first, preserves its levelId)", () => {
+    const cards: CardMap = new Map([["64:treble:C", unmasteredCard()]]);
+    const state = freshState(cards);
+    const out = backstopExtraCards(state, [
+      { cardKey: "64:treble:C", levelId: "L1" },
+      { cardKey: "64:treble:C", levelId: "L2" }, // shared card, second owning level
+    ]);
+    expect(out).toEqual([{ kind: "extra", cardKey: "64:treble:C", levelId: "L1" }]);
+  });
+
+  it("returns an empty array when every candidate is mastered or un-entered", () => {
+    const cards: CardMap = new Map([
+      ["64:treble:C", masteredCard(DAY)], // mastered
+    ]);
+    const state = freshState(cards);
+    const out = backstopExtraCards(state, [
+      { cardKey: "64:treble:C", levelId: "L1" }, // mastered -> skip
+      { cardKey: "65:treble:C", levelId: "L1" }, // un-entered -> skip
+    ]);
+    expect(out).toEqual([]);
   });
 });

@@ -122,28 +122,48 @@ function findFrontierLevel(state: CourseState): Level | null {
 }
 
 /**
- * Backstop queue: entered-but-not-mastered cards across unlocked levels, in
- * catalog order (so the frontier/lowest level's cards surface first). Only used
- * when the strict SM-2 queue (due + new) is empty, so a learner who has already
- * cleared today's assigned cards can still practise — these cards genuinely
- * benefit from extra reps. Deduplicates shared cards (e.g. "combined" reuses
- * line/space pitches) via the `seen` set.
+ * Shared backstop predicate: given a list of candidate cards (each with the
+ * level it's being offered from), return those that are ENTERED but NOT YET
+ * MASTERED, tagged as "extra" items. Deduplicates by cardKey (shared cards —
+ * e.g. "combined" reuses line/space pitches — are taken once, first occurrence
+ * wins, preserving its levelId).
+ *
+ * Both queue builders call this when their strict SM-2 queue is empty, so the
+ * "what counts as backstop-able" rule lives in exactly one place. Skipping
+ * un-entered cards (those belong to "new") and mastered cards (nothing left to
+ * learn) is this helper's contract, not each caller's.
  */
-function collectExtraCards(state: CourseState): QueueItem[] {
+export function backstopExtraCards(
+  state: CourseState,
+  candidates: ReadonlyArray<{ cardKey: string; levelId: string }>,
+): QueueItem[] {
   const seen = new Set<string>();
   const out: QueueItem[] = [];
-  for (const level of allLevels()) {
-    if (!isLevelUnlocked(state, level.id)) continue;
-    if (isLevelMastered(state, level.id)) continue; // mastered = done
-    for (const cardKey of level.cards) {
-      const id = cardKeyToString(cardKey);
-      if (seen.has(id)) continue; // cards are shared across levels; take once
-      seen.add(id);
-      const card = state.cards.get(id);
-      if (!card) continue; // un-entered -> belongs to "new", not "extra"
-      if (isMastered(card, state.threshold)) continue; // already mastered
-      out.push({ kind: "extra", cardKey: id, levelId: level.id });
-    }
+  for (const c of candidates) {
+    if (seen.has(c.cardKey)) continue; // shared card — take once
+    seen.add(c.cardKey);
+    const card = state.cards.get(c.cardKey);
+    if (!card) continue; // un-entered -> belongs to "new", not "extra"
+    if (isMastered(card, state.threshold)) continue; // already mastered
+    out.push({ kind: "extra", cardKey: c.cardKey, levelId: c.levelId });
   }
   return out;
+}
+
+/**
+ * Daily backstop candidates: entered-but-not-mastered cards across unlocked,
+ * non-mastered levels, in catalog order (so the frontier/lowest level's cards
+ * surface first). Mastered levels are skipped wholesale as an optimisation
+ * (their cards are all mastered anyway).
+ */
+function collectExtraCards(state: CourseState): QueueItem[] {
+  const candidates: { cardKey: string; levelId: string }[] = [];
+  for (const level of allLevels()) {
+    if (!isLevelUnlocked(state, level.id)) continue;
+    if (isLevelMastered(state, level.id)) continue; // mastered level = done
+    for (const k of level.cards) {
+      candidates.push({ cardKey: cardKeyToString(k), levelId: level.id });
+    }
+  }
+  return backstopExtraCards(state, candidates);
 }

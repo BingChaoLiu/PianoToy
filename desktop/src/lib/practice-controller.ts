@@ -19,7 +19,7 @@
 //   - Adaptive soft timer: limit = card.rma * 1.5 once an RMA exists, else the
 //     fixed FIRST_CARD_TIME_LIMIT_MS. Timeout routes to the "slow" outcome.
 
-import { buildDailyQueue, type QueueItem } from "@/lib/daily-queue";
+import { buildDailyQueue, backstopExtraCards, type QueueItem } from "@/lib/daily-queue";
 import {
   cardKeyFromString,
   cardKeyToString,
@@ -259,10 +259,10 @@ function isLevelCardSetMastered(
  * then the level's new (un-entered) cards. No new-card cap — a focused drill
  * works the whole set. Mirrors buildDailyQueue's structure but for one level.
  *
- * Backstop (mirrors the daily queue): if the strict queue is empty, fall back to
- * the level's entered-but-not-mastered cards so re-selecting a level the learner
- * already drilled today doesn't dead-end on a "session complete" popup. A fully
- * mastered level genuinely has nothing left -> stays empty -> complete.
+ * Backstop shares the daily queue's helper: if the strict queue is empty, fall
+ * back to the level's entered-but-not-mastered cards so re-selecting a level the
+ * learner already drilled today doesn't dead-end on a "session complete" popup.
+ * A fully mastered level genuinely has nothing left -> stays empty -> complete.
  */
 function buildLevelQueue(state: CourseState, now: number, levelId: string): QueueItem[] {
   const levelCards = getLevelCardKeys(levelId);
@@ -281,16 +281,8 @@ function buildLevelQueue(state: CourseState, now: number, levelId: string): Queu
   const strict = [...due, ...fresh];
   if (strict.length > 0) return strict;
 
-  // Backstop: entered-but-not-mastered cards in this level.
-  const extra: QueueItem[] = [];
-  for (const k of levelCards) {
-    const id = cardKeyToString(k);
-    const card = state.cards.get(id);
-    if (card && !isMastered(card, state.threshold)) {
-      extra.push({ kind: "extra", cardKey: id, levelId });
-    }
-  }
-  return extra;
+  // Backstop: entered-but-not-mastered cards in this level (shared helper).
+  return backstopExtraCards(state, levelCards.map((k) => ({ cardKey: cardKeyToString(k), levelId })));
 }
 
 /** Construct a PracticeSession from a course state + a pre-built queue. */
