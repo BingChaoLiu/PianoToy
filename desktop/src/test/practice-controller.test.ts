@@ -171,11 +171,25 @@ describe("createLevelSession (level-scoped drill)", () => {
     expect(session.queue.length).toBe(levelKeys.length); // the due one + the rest new
   });
 
-  it("completes immediately if the level has no due or new cards (all entered + not due)", () => {
-    // Every card entered with a future due time -> nothing due, nothing new.
+  it("backstops with entered-but-not-mastered cards when the strict level queue is empty", () => {
+    // Every card entered with a future due time, not yet mastered -> the strict
+    // queue (due + new) is empty, but the learner can still drill the unmastered
+    // cards rather than hitting a dead-end "complete" popup.
     const cards: CardMap = new Map();
     for (const k of getLevelCardKeys(frontierLevelId)) {
       cards.set(cardKeyToString(k), { ...freshCard(), reps: 1, interval: 1, due: NOW + DAY });
+    }
+    const state: CourseState = { cards, threshold: DEFAULT_THRESHOLD };
+    const session = createLevelSession(state, NOW, frontierLevelId);
+    expect(session.status).toBe("active");
+    expect(session.queue.length).toBe(getLevelCardKeys(frontierLevelId).length);
+    expect(session.queue.every((q) => q.kind === "extra")).toBe(true);
+  });
+
+  it("completes only when the level is fully mastered (nothing left to learn)", () => {
+    const cards: CardMap = new Map();
+    for (const k of getLevelCardKeys(frontierLevelId)) {
+      cards.set(cardKeyToString(k), { ...freshCard(), ease: 2.6, interval: 10, reps: 3, due: NOW + DAY });
     }
     const state: CourseState = { cards, threshold: DEFAULT_THRESHOLD };
     const session = createLevelSession(state, NOW, frontierLevelId);

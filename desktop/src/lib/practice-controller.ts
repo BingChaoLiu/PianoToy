@@ -258,6 +258,11 @@ function isLevelCardSetMastered(
  * Build a queue scoped to a single level: due cards first (sorted by due asc),
  * then the level's new (un-entered) cards. No new-card cap — a focused drill
  * works the whole set. Mirrors buildDailyQueue's structure but for one level.
+ *
+ * Backstop (mirrors the daily queue): if the strict queue is empty, fall back to
+ * the level's entered-but-not-mastered cards so re-selecting a level the learner
+ * already drilled today doesn't dead-end on a "session complete" popup. A fully
+ * mastered level genuinely has nothing left -> stays empty -> complete.
  */
 function buildLevelQueue(state: CourseState, now: number, levelId: string): QueueItem[] {
   const levelCards = getLevelCardKeys(levelId);
@@ -273,7 +278,19 @@ function buildLevelQueue(state: CourseState, now: number, levelId: string): Queu
     }
   }
   due.sort((a, b) => a.due - b.due);
-  return [...due, ...fresh];
+  const strict = [...due, ...fresh];
+  if (strict.length > 0) return strict;
+
+  // Backstop: entered-but-not-mastered cards in this level.
+  const extra: QueueItem[] = [];
+  for (const k of levelCards) {
+    const id = cardKeyToString(k);
+    const card = state.cards.get(id);
+    if (card && !isMastered(card, state.threshold)) {
+      extra.push({ kind: "extra", cardKey: id, levelId });
+    }
+  }
+  return extra;
 }
 
 /** Construct a PracticeSession from a course state + a pre-built queue. */
