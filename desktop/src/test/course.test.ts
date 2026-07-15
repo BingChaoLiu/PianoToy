@@ -73,10 +73,10 @@ describe("course catalog — branches", () => {
     ]);
   });
 
-  it("reading, key-signature, and interval branches are active; keyboard-location is coming-soon", () => {
+  it("all four branches are active", () => {
     expect(BRANCHES.map((b) => b.status)).toEqual([
       "active",
-      "coming-soon",
+      "active",
       "active",
       "active",
     ]);
@@ -241,10 +241,10 @@ describe("isLevelUnlocked", () => {
     expect(isLevelUnlocked(state, branch.levels[1].id)).toBe(false);
   });
 
-  it("keyboard-location levels stay locked (coming-soon branch)", () => {
+  it("keyboard-location levels are locked until the reading gate (6 levels) is satisfied", () => {
     const state: CourseState = { cards: new Map(), threshold: { ease: 2.5, intervalDays: 8 } };
     const b = getBranch("keyboard-location");
-    // coming-soon branch: any level (if any) is locked.
+    // Fresh state: reading gate not met -> all keyloc levels locked.
     for (const level of b.levels) {
       expect(isLevelUnlocked(state, level.id)).toBe(false);
     }
@@ -348,11 +348,12 @@ describe("masteredLevelCount", () => {
 });
 
 describe("cross-branch gating — partial-progress gate (T8)", () => {
-  it("keyboard-location stays locked even when reading is fully mastered (coming-soon branch)", () => {
-    const fully = stateMasteringFirstNLevels("reading-recognition", 99);
+  it("keyboard-location level 1 unlocks when reading gate is satisfied (6 levels)", () => {
+    const sixMastered = stateMasteringFirstNLevels("reading-recognition", 6);
     const keyboard = getBranch("keyboard-location");
-    for (const level of keyboard.levels) {
-      expect(isLevelUnlocked(fully, level.id)).toBe(false);
+    expect(isLevelUnlocked(sixMastered, keyboard.levels[0].id)).toBe(true);
+    for (let i = 1; i < keyboard.levels.length; i++) {
+      expect(isLevelUnlocked(sixMastered, keyboard.levels[i].id)).toBe(false);
     }
   });
 
@@ -475,5 +476,53 @@ describe("interval-recognition branch catalog (T9)", () => {
   it("all 7 interval sizes are represented across the levels", () => {
     const all = new Set(branch.levels.flatMap((l) => l.entityKeys));
     expect(all.size).toBe(7);
+  });
+});
+
+describe("keyboard-location branch catalog (T10)", () => {
+  const branch = getBranch("keyboard-location");
+
+  it("is an active branch", () => {
+    expect(branch.status).toBe("active");
+  });
+
+  it("has exactly 5 levels progressing by location strategy", () => {
+    expect(branch.levels.map((l) => l.kind)).toEqual([
+      "white-landmarks",
+      "black-landmarks",
+      "cross-octave",
+      "short-jumps",
+      "full-range",
+    ]);
+    expect(branch.levels.map((l) => l.position)).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("level 1 has 7 white-key landmark cards", () => {
+    expect(branch.levels[0].entityKeys).toEqual([
+      "keyloc:white-landmarks:C", "keyloc:white-landmarks:D",
+      "keyloc:white-landmarks:E", "keyloc:white-landmarks:F",
+      "keyloc:white-landmarks:G", "keyloc:white-landmarks:A",
+      "keyloc:white-landmarks:B",
+    ]);
+  });
+
+  it("level 2 has 5 black-key landmark cards", () => {
+    expect(branch.levels[1].entityKeys).toEqual([
+      "keyloc:black-landmarks:Cs", "keyloc:black-landmarks:Ds",
+      "keyloc:black-landmarks:Fs", "keyloc:black-landmarks:Gs",
+      "keyloc:black-landmarks:As",
+    ]);
+  });
+
+  it("levels 3-5 have 7 white-key cards each (cross-octave, short-jumps, full-range)", () => {
+    for (const lv of [2, 3, 4]) {
+      expect(branch.levels[lv].entityKeys.length).toBe(7);
+    }
+  });
+
+  it("all entity keys across the branch are unique (33 total)", () => {
+    const all = branch.levels.flatMap((l) => l.entityKeys);
+    expect(new Set(all).size).toBe(all.length);
+    expect(all.length).toBe(7 + 5 + 7 + 7 + 7);
   });
 });

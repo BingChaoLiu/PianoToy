@@ -15,6 +15,7 @@ import { CourseBrowser } from "@/components/CourseBrowser";
 import { NoteReadingStage } from "@/components/NoteReadingStage";
 import { KeySignatureStage } from "@/components/KeySignatureStage";
 import { IntervalStage } from "@/components/IntervalStage";
+import { KeyboardLocationStage } from "@/components/KeyboardLocationStage";
 import { NoteReadingSummary } from "@/components/NoteReadingSummary";
 import { useNoteReadingStore } from "@/store/useNoteReadingStore";
 import { useInputStore } from "@/store/useInputStore";
@@ -52,6 +53,7 @@ export function NoteReadingMode({
     scope != null && scope !== "daily-mix" ? getLevel(scope).branch : null;
   const isKeySigStage = branchForScope === "key-signature-recognition";
   const isIntervalStage = branchForScope === "interval-recognition";
+  const isKeyLocStage = branchForScope === "keyboard-location";
 
   // --- Exit handlers (practice → browser/home) ---
   const handleStageExit = () => {
@@ -114,6 +116,12 @@ export function NoteReadingMode({
         />
       ) : isIntervalStage ? (
         <IntervalStage
+          onOpenSettings={onOpenSettings}
+          onExit={handleStageExit}
+          onRetry={handleRetry}
+        />
+      ) : isKeyLocStage ? (
+        <KeyboardLocationStage
           onOpenSettings={onOpenSettings}
           onExit={handleStageExit}
           onRetry={handleRetry}

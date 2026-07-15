@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { computeLayout } from "@/lib/piano-layout";
-import { NUM_KEYS } from "@/lib/note-utils";
+import { computeLayout, midiFromPoint } from "@/lib/piano-layout";
+import { NUM_KEYS, FIRST_MIDI, isBlack } from "@/lib/note-utils";
 
 describe("computeLayout", () => {
   it("returns 88-key layout", () => {
@@ -46,5 +46,65 @@ describe("computeLayout", () => {
     expect(xBlack).toBeGreaterThan(xLeft);
     expect(xBlack).toBeLessThan(xRight);
     expect(xBlack).toBeCloseTo((xLeft + xRight) / 2, 5);
+  });
+});
+
+// --- midiFromPoint (hit testing) --------------------------------------------
+
+describe("midiFromPoint", () => {
+  // Use a known layout: 1040 wide, 600 tall.
+  const W = 1040;
+  const H = 600;
+  const l = computeLayout(W, H);
+  const pianoTop = l.height - l.pianoHeight;
+
+  it("returns null for points above the piano region", () => {
+    expect(midiFromPoint(l, 100, 0)).toBeNull();
+    expect(midiFromPoint(l, 500, pianoTop - 1)).toBeNull();
+  });
+
+  it("returns null for points below the piano region", () => {
+    expect(midiFromPoint(l, 500, H + 1)).toBeNull();
+  });
+
+  it("returns a white-key MIDI when clicking a white key's center", () => {
+    // Middle C (MIDI 60) is a white key. Click its center X at the bottom
+    // of the piano (below the black-key region).
+    const mcX = l.keyX[60 - FIRST_MIDI];
+    const y = pianoTop + l.pianoHeight * 0.9; // near the bottom
+    const midi = midiFromPoint(l, mcX, y);
+    expect(midi).toBe(60);
+    expect(isBlack(midi!)).toBe(false);
+  });
+
+  it("returns a black-key MIDI when clicking a black key's center", () => {
+    // C#4 (MIDI 61) is a black key. Click its center X near the top of the
+    // piano (within the black-key height region).
+    const csX = l.keyX[61 - FIRST_MIDI];
+    const y = pianoTop + l.pianoHeight * 0.3; // within black-key region
+    const midi = midiFromPoint(l, csX, y);
+    expect(midi).toBe(61);
+    expect(isBlack(midi!)).toBe(true);
+  });
+
+  it("prefers the black key when the point overlaps both a black and white key", () => {
+    // A black key sits between two white keys. A click at the black key's
+    // center should return the black key, not the underlying white key.
+    const blackMidi = 61; // C#4
+    const cx = l.keyX[blackMidi - FIRST_MIDI];
+    const y = pianoTop + l.pianoHeight * 0.2; // top of piano
+    const midi = midiFromPoint(l, cx, y);
+    expect(midi).toBe(blackMidi);
+  });
+
+  it("returns the underlying white key when clicking below the black-key region", () => {
+    // The same X as a black key, but below the black-key height — should
+    // resolve to the white key beneath.
+    const blackMidi = 61; // C#4
+    const cx = l.keyX[blackMidi - FIRST_MIDI];
+    const y = pianoTop + l.pianoHeight * 0.9; // bottom of piano
+    const midi = midiFromPoint(l, cx, y);
+    // Should be a white key near C4, NOT the black key.
+    expect(isBlack(midi!)).toBe(false);
   });
 });

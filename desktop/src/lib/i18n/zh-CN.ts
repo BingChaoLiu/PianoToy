@@ -248,6 +248,7 @@ const lang: Translation = {
     prompt_name: "\u8fd9\u662f\u4ec0\u4e48\u97f3\uff1f",
     prompt_key_signature: "\u8fd9\u662f\u4ec0\u4e48\u8c03\u53f7\uff1f",
     prompt_interval: "\u8fd9\u662f\u4ec0\u4e48\u97f3\u7a0b\uff1f",
+    prompt_keyboard_location: "\u627e\u5230\u8fd9\u4e2a\u952e\uff1a",
     slow: "\u592a\u6162",
     complete: "\u4eca\u65e5\u7ec3\u4e60\u5df2\u5b8c\u6210\uff01\u660e\u5929\u518d\u6765\u5427\u3002",
     remaining: "\u5269\u4f59",
@@ -302,6 +303,13 @@ const lang: Translation = {
       "fourths-fifths": "\u97f3\u7a0b \u2014 \u56db\u5ea6\u4e0e\u4e94\u5ea6",
       "sixths-sevenths": "\u97f3\u7a0b \u2014 \u516d\u5ea6\u4e0e\u4e03\u5ea6",
       "all-intervals": "\u97f3\u7a0b \u2014 \u5168\u90e8\u97f3\u7a0b",
+    },
+    keyboard_location: {
+      "white-landmarks": "\u952e\u76d8 \u2014 \u767d\u952e\u5b9a\u4f4d",
+      "black-landmarks": "\u952e\u76d8 \u2014 \u9ed1\u952e\u5b9a\u4f4d",
+      "cross-octave": "\u952e\u76d8 \u2014 \u8de8\u516b\u5ea6",
+      "short-jumps": "\u952e\u76d8 \u2014 \u77ed\u8df3",
+      "full-range": "\u952e\u76d8 \u2014 \u5168\u8303\u56f4",
     },
   },
   updater: {

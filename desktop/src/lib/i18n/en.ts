@@ -248,6 +248,7 @@ const lang: Translation = {
     prompt_name: "What note is this?",
     prompt_key_signature: "What key signature is this?",
     prompt_interval: "What interval is this?",
+    prompt_keyboard_location: "Find this key:",
     slow: "Slow",
     complete: "All caught up! Come back tomorrow.",
     remaining: "Remaining",
@@ -302,6 +303,13 @@ const lang: Translation = {
       "fourths-fifths": "Intervals \u2014 4ths & 5ths",
       "sixths-sevenths": "Intervals \u2014 6ths & 7ths",
       "all-intervals": "Intervals \u2014 All Sizes",
+    },
+    keyboard_location: {
+      "white-landmarks": "Keyboard \u2014 White-Key Landmarks",
+      "black-landmarks": "Keyboard \u2014 Black-Key Landmarks",
+      "cross-octave": "Keyboard \u2014 Cross-Octave",
+      "short-jumps": "Keyboard \u2014 Short Jumps",
+      "full-range": "Keyboard \u2014 Full Range",
     },
   },
   updater: {

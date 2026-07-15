@@ -72,19 +72,23 @@ export function nameForPitch(pitch: number): string {
 
 import { keySigEntityKeyFromString } from "@/lib/course";
 import { intervalEntityKeyFromString, intervalSizeToString, INTERVAL_SIZES } from "@/lib/interval-generator";
+import { keyLocEntityKeyFromString } from "@/lib/keyboard-location-generator";
 
 /**
  * The correct answer string for the current entity key. For a reading card
  * ("60:treble:C") this is the letter name ("C"); for a key-sig card
  * ("keysig:G") this is the key name ("G"); for an interval card ("interval:3")
- * this is the ordinal name ("3rd"). The store compares the learner's tap
- * against this value.
+ * this is the ordinal name ("3rd"). Keyboard-location cards don't use this
+ * comparison (their stage does its own target-vs-click matching via
+ * submitOutcome). The store compares the learner's tap against this value.
  */
 export function correctAnswerForEntityKey(entityKey: string): string {
   const noteKey = keySigEntityKeyFromString(entityKey);
   if (noteKey) return noteKey;
   const intervalSize = intervalEntityKeyFromString(entityKey);
   if (intervalSize) return intervalSizeToString(intervalSize);
+  const keyLoc = keyLocEntityKeyFromString(entityKey);
+  if (keyLoc) return `keyloc:${keyLoc.kind}:${keyLoc.cardId}`; // not used for comparison — keyboard-location stage uses submitOutcome
   // Reading card: decode the pitch and return the letter name.
   return nameForPitch(cardKeyFromString(entityKey).pitch);
 }
@@ -287,6 +291,8 @@ export function pitchFromEntityKey(entityKey: string): number | null {
   if (noteKey) return null; // key-sig card — no pitch
   const intervalSize = intervalEntityKeyFromString(entityKey);
   if (intervalSize) return null; // interval card — no single pitch
+  const keyLoc = keyLocEntityKeyFromString(entityKey);
+  if (keyLoc) return null; // keyboard-location card — target is random per prompt
   return cardKeyFromString(entityKey).pitch;
 }
 

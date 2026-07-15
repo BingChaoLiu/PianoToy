@@ -103,6 +103,14 @@ export type IntervalLevelKind =
   | "sixths-sevenths"
   | "all-intervals";
 
+/** Kind of level for the keyboard-location branch (by location strategy). */
+export type KeyLocLevelKind =
+  | "white-landmarks"
+  | "black-landmarks"
+  | "cross-octave"
+  | "short-jumps"
+  | "full-range";
+
 export interface Level {
   /** Stable unique id, e.g. "reading-treble-line-notes". */
   id: string;
@@ -121,7 +129,7 @@ export interface Level {
    */
   position: number;
   /** What kind of cards this level covers (branch-specific union). */
-  kind: ReadingLevelKind | KeySigLevelKind | IntervalLevelKind | string;
+  kind: ReadingLevelKind | KeySigLevelKind | IntervalLevelKind | KeyLocLevelKind | string;
   /** The pre-computed string entity keys this level trains (the Map keys). */
   entityKeys: string[];
 }
@@ -282,6 +290,49 @@ function buildIntervalLevels(): Level[] {
   ];
 }
 
+// --- Keyboard-location branch catalog ----------------------------------------
+// 5 levels by location strategy, 33 cards total. Cards are keyed by strategy
+// (not individual pitches) to avoid overlap with reading recognition. Each
+// prompt generates a random concrete target within the strategy's scope.
+//   1. white-landmarks  — 7 white keys (C D E F G A B), any octave
+//   2. black-landmarks  — 5 black keys (C♯ D♯ F♯ G♯ A♯), any octave
+//   3. cross-octave     — 7 white keys, specific octave (exact match)
+//   4. short-jumps      — 7 white keys, wider register (exact match)
+//   5. full-range       — 7 white keys, full keyboard (exact match)
+
+import {
+  keyLocEntityKeyToString,
+  KEYLOC_WHITE_LETTERS,
+  KEYLOC_BLACK_NAMES,
+  type KeyLocLevelKind as KeyLocKind,
+} from "@/lib/keyboard-location-generator";
+
+function keyLocLevel(
+  position: number,
+  kind: KeyLocKind,
+  cardIds: readonly string[],
+): Level {
+  return {
+    id: `keyloc-${kind}`,
+    titleKey: `course.keyboard_location.${kind}`,
+    branch: "keyboard-location",
+    track: "keyloc",
+    position,
+    kind,
+    entityKeys: cardIds.map((id) => keyLocEntityKeyToString(kind, id)),
+  };
+}
+
+function buildKeyLocLevels(): Level[] {
+  return [
+    keyLocLevel(1, "white-landmarks", KEYLOC_WHITE_LETTERS),
+    keyLocLevel(2, "black-landmarks", KEYLOC_BLACK_NAMES),
+    keyLocLevel(3, "cross-octave", KEYLOC_WHITE_LETTERS),
+    keyLocLevel(4, "short-jumps", KEYLOC_WHITE_LETTERS),
+    keyLocLevel(5, "full-range", KEYLOC_WHITE_LETTERS),
+  ];
+}
+
 export const BRANCHES: Branch[] = [
   {
     id: "reading-recognition",
@@ -295,10 +346,10 @@ export const BRANCHES: Branch[] = [
   {
     id: "keyboard-location",
     titleKey: "course.branch.keyboard",
-    status: "coming-soon",
+    status: "active",
     gatedBy: ["reading-recognition"],
     gateMasteredLevels: 0,
-    levels: [],
+    levels: buildKeyLocLevels(),
   },
   {
     id: "interval-recognition",

@@ -77,6 +77,12 @@ interface NoteReadingState {
   switchPracticeMode: (m: ScorePracticeMode) => Promise<void>;
   /** Submit an answer value (a letter name for reading, a key name for key-sig). */
   answer: (value: string) => void;
+  /**
+   * Submit a pre-judged outcome directly (keyboard-location branch T10). The
+   * stage does its own target-vs-click comparison and passes the outcome here,
+   * bypassing the string-based comparison in `answer`.
+   */
+  submitOutcome: (outcome: Outcome) => void;
   /** Apply a timeout outcome (the adaptive timer expired). */
   answerTimeout: () => void;
   /** Clear the judge flash (called by the component after the hold window). */
@@ -192,6 +198,16 @@ export const useNoteReadingStore = create<NoteReadingState>()(
 
         const correct = correctAnswerForEntityKey(ck);
         const outcome: Outcome = value === correct ? "correct" : "wrong";
+        const reactionMs = measuredReaction(s);
+        applyOutcome(s, outcome, set, reactionMs, ck);
+      },
+
+      submitOutcome: (outcome) => {
+        const s = get();
+        if (!s.session || s.phase !== "active") return;
+        if (s.practiceMode === "challenge" && s.runEnded) return; // run over
+        const ck = currentCardKey(s.session);
+        if (!ck) return;
         const reactionMs = measuredReaction(s);
         applyOutcome(s, outcome, set, reactionMs, ck);
       },
