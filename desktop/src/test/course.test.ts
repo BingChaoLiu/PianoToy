@@ -2,18 +2,19 @@ import { describe, it, expect } from "vitest";
 import {
   BRANCHES,
   getBranch,
-  getLevelCardKeys,
+  getLevelEntityKeys,
   isLevelMastered,
   isLevelUnlocked,
   levelStatus,
   nextPlayableLevels,
   masteredLevelCount,
+  branchMasteredLevelCount,
   type CardMap,
   type CourseState,
-  type CardKey,
   type BranchId,
 } from "@/lib/course";
 import { DEFAULT_SM2_CONFIG, type Card } from "@/lib/sm2";
+import { cardKeyFromString } from "@/lib/course";
 
 // --- Fixtures ----------------------------------------------------------------
 
@@ -35,39 +36,29 @@ function mastered(): Card {
 }
 
 /**
- * A card map whose card-set is the union of every card in the branch (keyed by
- * CardKey — shared across levels), with the cards belonging to the first N
- * levels (in flat catalog order) mastered and the rest fresh.
+ * A card map whose card-set is the union of every entity key in the branch,
+ * with the cards belonging to the first N levels (in flat catalog order)
+ * mastered and the rest fresh.
  *
- * NOTE 1: catalog order is NOT `level.position` — both tracks start at
- * position 1. We iterate the branch's levels array for a stable flat order.
- *
- * NOTE 2: levels share cards by design (e.g. "combined" reuses line+space).
- * So the card map is a union keyed by CardKey; we master the UNION of cards
- * owned by the first N levels, never re-seeding a card as fresh once a later
- * level also references it. A card is mastered if ANY of its owning levels is
- * within the first N.
+ * NOTE: levels may share entity keys by design (e.g. reading "combined" reuses
+ * line+space pitches). So the card map is a union keyed by string; we master
+ * the UNION of entity keys owned by the first N levels, never re-seeding a card
+ * as fresh once a later level also references it.
  */
 function stateMasteringFirstNLevels(branchId: BranchId, n: number): CourseState {
   const branch = getBranch(branchId);
   const masteredKeys = new Set<string>();
   branch.levels.slice(0, n).forEach((level) => {
-    for (const key of getLevelCardKeys(level.id)) masteredKeys.add(cardKeyToString(key));
+    for (const key of getLevelEntityKeys(level.id)) masteredKeys.add(key);
   });
   const cards: CardMap = new Map();
   for (const level of branch.levels) {
-    for (const key of getLevelCardKeys(level.id)) {
-      const id = cardKeyToString(key);
-      if (cards.has(id)) continue; // union — first write wins
-      cards.set(id, masteredKeys.has(id) ? mastered() : fresh());
+    for (const key of getLevelEntityKeys(level.id)) {
+      if (cards.has(key)) continue; // union — first write wins
+      cards.set(key, masteredKeys.has(key) ? mastered() : fresh());
     }
   }
   return { cards, threshold: { ease: 2.5, intervalDays: 8 } };
-}
-
-/** Deterministic string key for a CardKey (mirrors the production serializer). */
-function cardKeyToString(k: CardKey): string {
-  return `${k.pitch}:${k.clef}:${k.key}`;
 }
 
 // --- Catalog structure -------------------------------------------------------
@@ -82,18 +73,23 @@ describe("course catalog — branches", () => {
     ]);
   });
 
-  it("only reading-recognition is playable now; the other three are coming-soon", () => {
+  it("reading-recognition and key-signature-recognition are active; keyboard-location and interval-recognition are coming-soon", () => {
     expect(BRANCHES.map((b) => b.status)).toEqual([
       "active",
       "coming-soon",
       "coming-soon",
-      "coming-soon",
+      "active",
     ]);
   });
 
-  it("declares the cross-branch dependency: reading-recognition gates keyboard-location", () => {
-    const keyboard = getBranch("keyboard-location");
-    expect(keyboard.gatedBy).toContain("reading-recognition");
+  it("declares the cross-branch dependency: reading-recognition gates the three new branches", () => {
+    expect(getBranch("keyboard-location").gatedBy).toContain("reading-recognition");
+    expect(getBranch("interval-recognition").gatedBy).toContain("reading-recognition");
+    expect(getBranch("key-signature-recognition").gatedBy).toContain("reading-recognition");
+  });
+
+  it("reading's cross-branch gate requires 6 levels mastered (treble track cleared)", () => {
+    expect(getBranch("reading-recognition").gateMasteredLevels).toBe(6);
   });
 });
 
@@ -132,33 +128,33 @@ describe("course catalog — reading-recognition branch", () => {
 
   it("every reading card is at key=C (reading branch starts diatonic in C major)", () => {
     for (const level of branch.levels) {
-      for (const key of getLevelCardKeys(level.id)) {
-        expect(key.key).toBe("C");
+      for (const entityKey of getLevelEntityKeys(level.id)) {
+        expect(cardKeyFromString(entityKey).key).toBe("C");
       }
     }
   });
 
   it("treble line-notes level covers exactly the five treble staff line pitches (E4 G4 B4 D5 F5)", () => {
     const lvl = branch.levels.find((l) => l.track === "treble" && l.kind === "line-notes")!;
-    const pitches = getLevelCardKeys(lvl.id).map((k) => k.pitch).sort((a, b) => a - b);
+    const pitches = getLevelEntityKeys(lvl.id).map((k) => cardKeyFromString(k).pitch).sort((a, b) => a - b);
     // MIDI: E4=64 G4=67 B4=71 D5=74 F5=77
     expect(pitches).toEqual([64, 67, 71, 74, 77]);
-    expect(getLevelCardKeys(lvl.id).every((k) => k.clef === "treble")).toBe(true);
+    expect(getLevelEntityKeys(lvl.id).every((k) => cardKeyFromString(k).clef === "treble")).toBe(true);
   });
 
   it("treble space-notes level covers the four treble staff space pitches (F4 A4 C5 E5)", () => {
     const lvl = branch.levels.find((l) => l.track === "treble" && l.kind === "space-notes")!;
-    const pitches = getLevelCardKeys(lvl.id).map((k) => k.pitch).sort((a, b) => a - b);
+    const pitches = getLevelEntityKeys(lvl.id).map((k) => cardKeyFromString(k).pitch).sort((a, b) => a - b);
     // MIDI: F4=65 A4=69 C5=72 E5=76
     expect(pitches).toEqual([65, 69, 72, 76]);
   });
 
   it("bass line-notes level covers the five bass staff line pitches (G2 B2 D3 F3 A3)", () => {
     const lvl = branch.levels.find((l) => l.track === "bass" && l.kind === "line-notes")!;
-    const pitches = getLevelCardKeys(lvl.id).map((k) => k.pitch).sort((a, b) => a - b);
+    const pitches = getLevelEntityKeys(lvl.id).map((k) => cardKeyFromString(k).pitch).sort((a, b) => a - b);
     // MIDI: G2=43 B2=47 D3=50 F3=53 A3=57
     expect(pitches).toEqual([43, 47, 50, 53, 57]);
-    expect(getLevelCardKeys(lvl.id).every((k) => k.clef === "bass")).toBe(true);
+    expect(getLevelEntityKeys(lvl.id).every((k) => cardKeyFromString(k).clef === "bass")).toBe(true);
   });
 
   it("each level has a stable id, a 1-based position within its track, and a title key", () => {
@@ -184,8 +180,8 @@ describe("isLevelMastered", () => {
     const branch = getBranch("reading-recognition");
     const first = branch.levels[0];
     const cards: CardMap = new Map();
-    for (const key of getLevelCardKeys(first.id)) {
-      cards.set(cardKeyToString(key), fresh());
+    for (const key of getLevelEntityKeys(first.id)) {
+      cards.set(key, fresh());
     }
     const state: CourseState = { cards, threshold: { ease: 2.5, intervalDays: 8 } };
     expect(isLevelMastered(state, first.id)).toBe(false);
@@ -200,11 +196,11 @@ describe("isLevelMastered", () => {
   it("mastery requires ALL cards, not a subset", () => {
     const branch = getBranch("reading-recognition");
     const first = branch.levels[0];
-    const keys = getLevelCardKeys(first.id);
+    const keys = getLevelEntityKeys(first.id);
     const cards: CardMap = new Map();
     // Master every card except the last one.
     keys.forEach((k, i) => {
-      cards.set(cardKeyToString(k), i < keys.length - 1 ? mastered() : fresh());
+      cards.set(k, i < keys.length - 1 ? mastered() : fresh());
     });
     const state: CourseState = { cards, threshold: { ease: 2.5, intervalDays: 8 } };
     expect(isLevelMastered(state, first.id)).toBe(false);
@@ -236,18 +232,18 @@ describe("isLevelUnlocked", () => {
   it("a level stays locked if an earlier level in the same track is only partially mastered", () => {
     // Master the first level except one card.
     const first = branch.levels[0];
-    const keys = getLevelCardKeys(first.id);
+    const keys = getLevelEntityKeys(first.id);
     const cards: CardMap = new Map();
     keys.forEach((k, i) => {
-      cards.set(cardKeyToString(k), i < keys.length - 1 ? mastered() : fresh());
+      cards.set(k, i < keys.length - 1 ? mastered() : fresh());
     });
     const state: CourseState = { cards, threshold: { ease: 2.5, intervalDays: 8 } };
     expect(isLevelUnlocked(state, branch.levels[1].id)).toBe(false);
   });
 
-  it("every level of the three coming-soon branches is locked (not playable yet)", () => {
+  it("keyboard-location and interval-recognition levels stay locked (coming-soon branches)", () => {
     const state: CourseState = { cards: new Map(), threshold: { ease: 2.5, intervalDays: 8 } };
-    for (const id of ["keyboard-location", "interval-recognition", "key-signature-recognition"] as BranchId[]) {
+    for (const id of ["keyboard-location", "interval-recognition"] as BranchId[]) {
       const b = getBranch(id);
       // coming-soon branches have no playable levels; any level (if any) is locked.
       for (const level of b.levels) {
@@ -274,10 +270,10 @@ describe("levelStatus (browser display status)", () => {
   });
 
   it("an unlocked level with some entered (but not mastered) cards is 'in-progress'", () => {
-    const keys = getLevelCardKeys(first.id);
+    const keys = getLevelEntityKeys(first.id);
     const cards: CardMap = new Map();
     // Enter just the first card as fresh (started but not mastered).
-    cards.set(cardKeyToString(keys[0]), fresh());
+    cards.set(keys[0], fresh());
     const state: CourseState = { cards, threshold: THRESHOLD };
     expect(levelStatus(state, first.id)).toBe("in-progress");
   });
@@ -294,7 +290,7 @@ describe("levelStatus (browser display status)", () => {
     expect(levelStatus({ cards: new Map(), threshold: THRESHOLD }, second.id)).toBe("locked");
 
     const cards: CardMap = new Map();
-    for (const k of getLevelCardKeys(first.id)) cards.set(cardKeyToString(k), mastered());
+    for (const k of getLevelEntityKeys(first.id)) cards.set(k, mastered());
     const after: CourseState = { cards, threshold: THRESHOLD };
     expect(levelStatus(after, second.id)).toBe("ready");
   });
@@ -311,7 +307,7 @@ describe("levelStatus (browser display status)", () => {
 
   it("course-browser contract: mastering level 1 renders it 'mastered' and level 2 'ready'", () => {
     const cards: CardMap = new Map();
-    for (const k of getLevelCardKeys(first.id)) cards.set(cardKeyToString(k), mastered());
+    for (const k of getLevelEntityKeys(first.id)) cards.set(k, mastered());
     const state: CourseState = { cards, threshold: THRESHOLD };
     expect(levelStatus(state, first.id)).toBe("mastered");
     expect(levelStatus(state, second.id)).toBe("ready");
@@ -353,10 +349,8 @@ describe("masteredLevelCount", () => {
   });
 });
 
-describe("cross-branch gating (acceptance criterion)", () => {
-  it("mastering the LAST level of reading-recognition does NOT unlock keyboard-location yet (coming-soon)", () => {
-    // keyboard-location is coming-soon, so even fully mastering reading must keep
-    // all keyboard levels locked — the gate is "active + dependency mastered".
+describe("cross-branch gating — partial-progress gate (T8)", () => {
+  it("keyboard-location stays locked even when reading is fully mastered (coming-soon branch)", () => {
     const fully = stateMasteringFirstNLevels("reading-recognition", 99);
     const keyboard = getBranch("keyboard-location");
     for (const level of keyboard.levels) {
@@ -364,21 +358,65 @@ describe("cross-branch gating (acceptance criterion)", () => {
     }
   });
 
-  it("the cross-branch dependency gate (isBranchMastered) resolves true once reading is fully cleared", () => {
-    // The cross-branch gate is exercised through isBranchMastered, which the
-    // unlock machine consults for each gatedBy entry. We verify the predicate
-    // directly because keyboard-location has no levels yet (coming-soon), so
-    // its individual levels can't be tested for unlock.
-    const fully = stateMasteringFirstNLevels("reading-recognition", 99);
-    const partially = stateMasteringFirstNLevels("reading-recognition", 1);
-    expect(masteredLevelCount(fully)).toBe(12);
-    expect(masteredLevelCount(partially)).toBe(1);
-    // Reading gates keyboard-location: partially-mastered reading does NOT
-    // satisfy the gate; fully-mastered reading DOES.
-    // (Verified indirectly via masteredLevelCount + the branch's gatedBy decl,
-    //  which is what isLevelUnlocked consults.)
-    const reading = getBranch("reading-recognition");
-    expect(reading.levels.every((l) => isLevelMastered(fully, l.id))).toBe(true);
-    expect(reading.levels.every((l) => isLevelMastered(partially, l.id))).toBe(false);
+  it("key-sig levels are locked when fewer than 6 reading levels are mastered", () => {
+    // With only 5 reading levels mastered (treble not fully cleared), the gate
+    // (gateMasteredLevels=6) is not satisfied -> all key-sig levels locked.
+    const fiveMastered = stateMasteringFirstNLevels("reading-recognition", 5);
+    expect(branchMasteredLevelCount(fiveMastered, "reading-recognition")).toBe(5);
+    const keysig = getBranch("key-signature-recognition");
+    for (const level of keysig.levels) {
+      expect(isLevelUnlocked(fiveMastered, level.id)).toBe(false);
+    }
+  });
+
+  it("key-sig level 1 unlocks when exactly 6 reading levels are mastered (treble cleared)", () => {
+    const sixMastered = stateMasteringFirstNLevels("reading-recognition", 6);
+    expect(branchMasteredLevelCount(sixMastered, "reading-recognition")).toBe(6);
+    const keysig = getBranch("key-signature-recognition");
+    // Level 1 (0-accidentals) is position 1, no within-branch gate.
+    expect(isLevelUnlocked(sixMastered, keysig.levels[0].id)).toBe(true);
+    // Level 2+ are still locked (within-branch gate: previous level not mastered).
+    for (let i = 1; i < keysig.levels.length; i++) {
+      expect(isLevelUnlocked(sixMastered, keysig.levels[i].id)).toBe(false);
+    }
+  });
+});
+
+describe("key-signature-recognition branch catalog (T8)", () => {
+  const branch = getBranch("key-signature-recognition");
+
+  it("is an active branch", () => {
+    expect(branch.status).toBe("active");
+  });
+
+  it("has exactly 4 levels progressing by accidental count", () => {
+    expect(branch.levels.map((l) => l.kind)).toEqual([
+      "0-accidentals",
+      "1-accidental",
+      "2-accidentals",
+      "3-accidentals",
+    ]);
+    expect(branch.levels.map((l) => l.position)).toEqual([1, 2, 3, 4]);
+  });
+
+  it("level 1 has only C (0 accidentals)", () => {
+    expect(branch.levels[0].entityKeys).toEqual(["keysig:C"]);
+  });
+
+  it("level 2 has G and F (1 accidental each)", () => {
+    expect(branch.levels[1].entityKeys).toEqual(["keysig:G", "keysig:F"]);
+  });
+
+  it("level 3 has D and Bb (2 accidentals each)", () => {
+    expect(branch.levels[2].entityKeys).toEqual(["keysig:D", "keysig:Bb"]);
+  });
+
+  it("level 4 has A, E, and Eb (3 accidentals each)", () => {
+    expect(branch.levels[3].entityKeys).toEqual(["keysig:A", "keysig:E", "keysig:Eb"]);
+  });
+
+  it("all 8 keys are represented across the 4 levels", () => {
+    const all = new Set(branch.levels.flatMap((l) => l.entityKeys));
+    expect(all.size).toBe(8);
   });
 });

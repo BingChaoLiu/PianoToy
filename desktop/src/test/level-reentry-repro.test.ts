@@ -13,7 +13,7 @@
 import { describe, it, expect } from "vitest";
 import { createLevelSession } from "@/lib/practice-controller";
 import { schedule, createCard, type MasteryThreshold } from "@/lib/sm2";
-import { cardKeyToString, getBranch, getLevelCardKeys, type CardMap, type CourseState } from "@/lib/course";
+import { getBranch, getLevelEntityKeys, type CardMap, type CourseState } from "@/lib/course";
 
 const THRESHOLD: MasteryThreshold = { ease: 2.5, intervalDays: 6 };
 
@@ -33,10 +33,9 @@ describe("REGRESSION: tapping a level after practising it today should not dead-
     expect(session0.status).toBe("active");
 
     const cardsAfter: CardMap = new Map();
-    for (const k of getLevelCardKeys(frontierLevel.id)) {
-      const id = cardKeyToString(k);
-      const card = state0.cards.get(id) ?? createCard();
-      cardsAfter.set(id, schedule(card, { outcome: "correct", now: day0, reactionMs: 1000 }));
+    for (const entityKey of getLevelEntityKeys(frontierLevel.id)) {
+      const card = state0.cards.get(entityKey) ?? createCard();
+      cardsAfter.set(entityKey, schedule(card, { outcome: "correct", now: day0, reactionMs: 1000 }));
     }
     const state1: CourseState = { cards: cardsAfter, threshold: THRESHOLD };
 
@@ -52,8 +51,8 @@ describe("REGRESSION: tapping a level after practising it today should not dead-
     const DAY = 86_400_000;
     // Master every card in the level, all due in the FUTURE (not due today).
     const cards: CardMap = new Map();
-    for (const k of getLevelCardKeys(frontierLevel.id)) {
-      cards.set(cardKeyToString(k), { ...createCard(), ease: 2.6, interval: 10, reps: 3, due: now + DAY });
+    for (const entityKey of getLevelEntityKeys(frontierLevel.id)) {
+      cards.set(entityKey, { ...createCard(), ease: 2.6, interval: 10, reps: 3, due: now + DAY });
     }
     const state: CourseState = { cards, threshold: THRESHOLD };
 

@@ -23,7 +23,6 @@
 
 import {
   allLevels,
-  cardKeyToString,
   isLevelUnlocked,
   isLevelMastered,
   type CourseState,
@@ -36,7 +35,7 @@ export interface DailyQueueOptions {
   newCardsPerDay: number;
 }
 
-/** A single item in today's queue. `cardKey` is the string form of a CardKey. */
+/** A single item in today's queue. `cardKey` is the string entity key. */
 export type QueueItem =
   | { kind: "due"; cardKey: string; due: number; levelId: string }
   | { kind: "new"; cardKey: string; levelId: string }
@@ -72,14 +71,13 @@ function collectDueCards(state: CourseState, now: number): QueueItem[] {
   const items: Extract<QueueItem, { kind: "due" }>[] = [];
   for (const level of allLevels()) {
     if (!isLevelUnlocked(state, level.id)) continue;
-    for (const cardKey of level.cards) {
-      const id = cardKeyToString(cardKey);
-      if (seen.has(id)) continue; // cards are shared across levels; take once
-      seen.add(id);
-      const card = state.cards.get(id);
+    for (const entityKey of level.entityKeys) {
+      if (seen.has(entityKey)) continue; // cards are shared across levels; take once
+      seen.add(entityKey);
+      const card = state.cards.get(entityKey);
       if (!card) continue; // never practiced -> not due, it's potentially "new"
       if (card.due <= now) {
-        items.push({ kind: "due", cardKey: id, due: card.due, levelId: level.id });
+        items.push({ kind: "due", cardKey: entityKey, due: card.due, levelId: level.id });
       }
     }
   }
@@ -101,11 +99,10 @@ function collectNewCards(state: CourseState, cap: number): QueueItem[] {
   const frontier = findFrontierLevel(state);
   if (!frontier) return [];
   const out: QueueItem[] = [];
-  for (const cardKey of frontier.cards) {
+  for (const entityKey of frontier.entityKeys) {
     if (out.length >= cap) break;
-    const id = cardKeyToString(cardKey);
-    if (!state.cards.has(id)) {
-      out.push({ kind: "new", cardKey: id, levelId: frontier.id });
+    if (!state.cards.has(entityKey)) {
+      out.push({ kind: "new", cardKey: entityKey, levelId: frontier.id });
     }
   }
   return out;
@@ -115,7 +112,7 @@ function collectNewCards(state: CourseState, cap: number): QueueItem[] {
 function findFrontierLevel(state: CourseState): Level | null {
   for (const level of allLevels()) {
     if (!isLevelUnlocked(state, level.id)) continue;
-    const hasNew = level.cards.some((k) => !state.cards.has(cardKeyToString(k)));
+    const hasNew = level.entityKeys.some((k) => !state.cards.has(k));
     if (hasNew) return level;
   }
   return null;
@@ -161,8 +158,8 @@ function collectExtraCards(state: CourseState): QueueItem[] {
   for (const level of allLevels()) {
     if (!isLevelUnlocked(state, level.id)) continue;
     if (isLevelMastered(state, level.id)) continue; // mastered level = done
-    for (const k of level.cards) {
-      candidates.push({ cardKey: cardKeyToString(k), levelId: level.id });
+    for (const entityKey of level.entityKeys) {
+      candidates.push({ cardKey: entityKey, levelId: level.id });
     }
   }
   return backstopExtraCards(state, candidates);

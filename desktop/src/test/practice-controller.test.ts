@@ -15,6 +15,9 @@ import {
   timerFrac,
   nameForPitch,
   letterForPitch,
+  correctAnswerForEntityKey,
+  pitchFromEntityKey,
+  KEYSIG_ANSWER_BUTTONS,
   levelJustMastered,
   challengeActionFor,
   DEFAULT_NEW_CARDS_PER_DAY,
@@ -23,8 +26,8 @@ import {
   LETTER_NAMES,
   type PracticeSession,
 } from "@/lib/practice-controller";
-import type { CourseState, CardMap, CardKey } from "@/lib/course";
-import { cardKeyToString, getLevelCardKeys, getBranch } from "@/lib/course";
+import type { CourseState, CardMap } from "@/lib/course";
+import { getLevelEntityKeys, getBranch } from "@/lib/course";
 import { type Card } from "@/lib/sm2";
 
 // --- Fixtures ----------------------------------------------------------------
@@ -55,8 +58,9 @@ function masteredCard(): Card {
   return answeredCard(0, { ease: 2.6, interval: 10, reps: 3 });
 }
 
-function key(k: CardKey): string {
-  return cardKeyToString(k);
+/** Identity passthrough — entity keys are already strings. */
+function key(entityKey: string): string {
+  return entityKey;
 }
 
 function freshState(cards: CardMap = new Map()): CourseState {
@@ -150,7 +154,7 @@ describe("createLevelSession (level-scoped drill)", () => {
   it("scopes the queue to ONLY that level's cards (no other levels bleed in)", () => {
     const state = freshState();
     const session = createLevelSession(state, NOW, frontierLevelId);
-    const levelKeys = new Set(getLevelCardKeys(frontierLevelId).map((k) => cardKeyToString(k)));
+    const levelKeys = new Set(getLevelEntityKeys(frontierLevelId));
     for (const item of session.queue) {
       expect(levelKeys.has(item.cardKey)).toBe(true);
     }
@@ -159,14 +163,14 @@ describe("createLevelSession (level-scoped drill)", () => {
   it("puts due cards first, then new cards, when the level is partially practiced", () => {
     // Enter one card as overdue; leave the rest new.
     const cards: CardMap = new Map();
-    const levelKeys = getLevelCardKeys(frontierLevelId);
-    cards.set(cardKeyToString(levelKeys[0]), { ...freshCard(), reps: 1, interval: 1, due: NOW - 1000 });
+    const levelKeys = getLevelEntityKeys(frontierLevelId);
+    cards.set(levelKeys[0], { ...freshCard(), reps: 1, interval: 1, due: NOW - 1000 });
     const state: CourseState = { cards, threshold: DEFAULT_THRESHOLD };
 
     const session = createLevelSession(state, NOW, frontierLevelId);
     // First item is the due card; the rest are new.
     expect(session.queue[0].kind).toBe("due");
-    expect(session.queue[0].cardKey).toBe(cardKeyToString(levelKeys[0]));
+    expect(session.queue[0].cardKey).toBe(levelKeys[0]);
     expect(session.queue.slice(1).every((q) => q.kind === "new")).toBe(true);
     expect(session.queue.length).toBe(levelKeys.length); // the due one + the rest new
   });
@@ -176,20 +180,20 @@ describe("createLevelSession (level-scoped drill)", () => {
     // queue (due + new) is empty, but the learner can still drill the unmastered
     // cards rather than hitting a dead-end "complete" popup.
     const cards: CardMap = new Map();
-    for (const k of getLevelCardKeys(frontierLevelId)) {
-      cards.set(cardKeyToString(k), { ...freshCard(), reps: 1, interval: 1, due: NOW + DAY });
+    for (const entityKey of getLevelEntityKeys(frontierLevelId)) {
+      cards.set(entityKey, { ...freshCard(), reps: 1, interval: 1, due: NOW + DAY });
     }
     const state: CourseState = { cards, threshold: DEFAULT_THRESHOLD };
     const session = createLevelSession(state, NOW, frontierLevelId);
     expect(session.status).toBe("active");
-    expect(session.queue.length).toBe(getLevelCardKeys(frontierLevelId).length);
+    expect(session.queue.length).toBe(getLevelEntityKeys(frontierLevelId).length);
     expect(session.queue.every((q) => q.kind === "extra")).toBe(true);
   });
 
   it("completes only when the level is fully mastered (nothing left to learn)", () => {
     const cards: CardMap = new Map();
-    for (const k of getLevelCardKeys(frontierLevelId)) {
-      cards.set(cardKeyToString(k), { ...freshCard(), ease: 2.6, interval: 10, reps: 3, due: NOW + DAY });
+    for (const entityKey of getLevelEntityKeys(frontierLevelId)) {
+      cards.set(entityKey, { ...freshCard(), ease: 2.6, interval: 10, reps: 3, due: NOW + DAY });
     }
     const state: CourseState = { cards, threshold: DEFAULT_THRESHOLD };
     const session = createLevelSession(state, NOW, frontierLevelId);
@@ -406,7 +410,7 @@ describe("session completion", () => {
 describe("levelJustMastered", () => {
   it("is true when a level flips from unmastered to mastered after an answer", () => {
     const frontier = frontierLevelId();
-    const cardKeys = getLevelCardKeys(frontier);
+    const cardKeys = getLevelEntityKeys(frontier);
 
     // Before: all cards one correct short of mastery (interval below threshold).
     const prev: CardMap = new Map();
@@ -427,7 +431,7 @@ describe("levelJustMastered", () => {
 
   it("is false when the level was already mastered before", () => {
     const frontier = frontierLevelId();
-    const cardKeys = getLevelCardKeys(frontier);
+    const cardKeys = getLevelEntityKeys(frontier);
     const mastered: CardMap = new Map();
     for (const k of cardKeys) mastered.set(key(k), masteredCard());
     // No change between prev and curr.
@@ -436,7 +440,7 @@ describe("levelJustMastered", () => {
 
   it("is false when the level is still not fully mastered after", () => {
     const frontier = frontierLevelId();
-    const cardKeys = getLevelCardKeys(frontier);
+    const cardKeys = getLevelEntityKeys(frontier);
     const prev: CardMap = new Map();
     const curr: CardMap = new Map();
     cardKeys.forEach((k) => {
@@ -468,5 +472,49 @@ describe("challengeActionFor", () => {
       const a = challengeActionFor(o);
       expect(a === "hit" || a === "miss").toBe(true);
     }
+  });
+});
+
+// --- correctAnswerForEntityKey (T8 branch-aware answer resolution) ----------
+
+describe("correctAnswerForEntityKey", () => {
+  it("resolves reading cards to their letter name (pitch-based)", () => {
+    // 60:treble:C = middle C -> "C"
+    expect(correctAnswerForEntityKey("60:treble:C")).toBe("C");
+    // 64:treble:C = E4 -> "E"
+    expect(correctAnswerForEntityKey("64:treble:C")).toBe("E");
+    // 71:treble:C = B4 -> "B"
+    expect(correctAnswerForEntityKey("71:treble:C")).toBe("B");
+    // 43:bass:C = G2 -> "G"
+    expect(correctAnswerForEntityKey("43:bass:C")).toBe("G");
+  });
+
+  it("resolves key-sig cards to their key name", () => {
+    expect(correctAnswerForEntityKey("keysig:C")).toBe("C");
+    expect(correctAnswerForEntityKey("keysig:G")).toBe("G");
+    expect(correctAnswerForEntityKey("keysig:D")).toBe("D");
+    expect(correctAnswerForEntityKey("keysig:A")).toBe("A");
+    expect(correctAnswerForEntityKey("keysig:E")).toBe("E");
+    expect(correctAnswerForEntityKey("keysig:F")).toBe("F");
+    expect(correctAnswerForEntityKey("keysig:Bb")).toBe("Bb");
+    expect(correctAnswerForEntityKey("keysig:Eb")).toBe("Eb");
+  });
+});
+
+describe("pitchFromEntityKey", () => {
+  it("returns the pitch for reading entity keys", () => {
+    expect(pitchFromEntityKey("60:treble:C")).toBe(60);
+    expect(pitchFromEntityKey("64:treble:C")).toBe(64);
+  });
+
+  it("returns null for key-sig entity keys (no pitch concept)", () => {
+    expect(pitchFromEntityKey("keysig:G")).toBeNull();
+    expect(pitchFromEntityKey("keysig:Bb")).toBeNull();
+  });
+});
+
+describe("KEYSIG_ANSWER_BUTTONS", () => {
+  it("has exactly 8 buttons for the 8 key signatures", () => {
+    expect(KEYSIG_ANSWER_BUTTONS).toEqual(["C", "G", "D", "A", "E", "F", "Bb", "Eb"]);
   });
 });

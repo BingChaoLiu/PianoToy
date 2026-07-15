@@ -259,6 +259,8 @@ export interface Translation {
     loading: string;
     /** "What note is this?" prompt above the letter buttons. */
     prompt_name: string;
+    /** "What key signature is this?" prompt above the key-name buttons (key-sig branch). */
+    prompt_key_signature: string;
     /** "Slow" outcome label (timeout). */
     slow: string;
     /** Daily review queue finished — nothing left to practice today. */
@@ -312,6 +314,8 @@ export interface Translation {
       treble: Record<string, string>;
       bass: Record<string, string>;
     };
+    /** Key-signature level titles keyed by accidental count: course.key_signature.<kind>. */
+    key_signature: Record<string, string>;
   };
   updater: {
     new_version: string;

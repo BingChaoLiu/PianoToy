@@ -246,6 +246,7 @@ const lang: Translation = {
     continue: "Continue",
     loading: "Loading today\u2019s practice\u2026",
     prompt_name: "What note is this?",
+    prompt_key_signature: "What key signature is this?",
     slow: "Slow",
     complete: "All caught up! Come back tomorrow.",
     remaining: "Remaining",
@@ -288,6 +289,12 @@ const lang: Translation = {
         "ledger-above": "Bass \u2014 Ledger Above",
         accidentals: "Bass \u2014 Accidentals",
       },
+    },
+    key_signature: {
+      "0-accidentals": "Key Signatures \u2014 No Accidentals",
+      "1-accidental": "Key Signatures \u2014 1 Accidental",
+      "2-accidentals": "Key Signatures \u2014 2 Accidentals",
+      "3-accidentals": "Key Signatures \u2014 3 Accidentals",
     },
   },
   updater: {

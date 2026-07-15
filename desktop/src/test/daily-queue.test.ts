@@ -8,11 +8,10 @@ import {
 } from "@/lib/daily-queue";
 import {
   getBranch,
-  getLevelCardKeys,
+  getLevelEntityKeys,
   isLevelUnlocked,
   type CourseState,
   type CardMap,
-  type CardKey,
   type BranchId,
 } from "@/lib/course";
 import { DEFAULT_SM2_CONFIG, type Card } from "@/lib/sm2";
@@ -45,16 +44,11 @@ function freshState(cards: CardMap = new Map()): CourseState {
   return { cards, threshold: THRESHOLD };
 }
 
-/** CardKey -> deterministic string (mirrors course.cardKeyToString). */
-function key(k: CardKey): string {
-  return `${k.pitch}:${k.clef}:${k.key}`;
-}
-
-/** Seed a card entry for every card in the first `levelCount` levels of a branch. */
+/** Seed a card entry for every entity key in the first `levelCount` levels of a branch. */
 function seedLevels(branchId: BranchId, levelCount: number, card: Card, into: CardMap): void {
   const branch = getBranch(branchId);
   branch.levels.slice(0, levelCount).forEach((level) => {
-    for (const k of getLevelCardKeys(level.id)) into.set(key(k), card);
+    for (const entityKey of getLevelEntityKeys(level.id)) into.set(entityKey, card);
   });
 }
 
@@ -87,7 +81,7 @@ describe("buildDailyQueue — empty card map", () => {
   it("new cards come from the frontier (lowest unlocked, not-started) level only", () => {
     const q = buildDailyQueue(freshState(), NOW, DEFAULT_OPTS);
     const newIds = new Set(q.filter((i) => i.kind === "new").map((i) => i.cardKey));
-    const frontierCards = getLevelCardKeys(frontierLevelId()).map(key);
+    const frontierCards = getLevelEntityKeys(frontierLevelId());
     // Every new card in the queue belongs to the frontier level.
     for (const id of newIds) expect(frontierCards).toContain(id);
   });
@@ -121,10 +115,10 @@ describe("buildDailyQueue — mix of due + new", () => {
     const cards: CardMap = new Map();
     // Master level 0 with a mix of due times (overdue, since mastered cards
     // can still be due for review).
-    const lvl0Keys = getLevelCardKeys(getBranch("reading-recognition").levels[0].id);
+    const lvl0Keys = getLevelEntityKeys(getBranch("reading-recognition").levels[0].id);
     const offsets = [-3 * DAY, -1 * DAY, -2 * DAY, 0, 0];
-    lvl0Keys.forEach((k, i) => {
-      cards.set(key(k), masteredCard(offsets[i % offsets.length]));
+    lvl0Keys.forEach((entityKey, i) => {
+      cards.set(entityKey, masteredCard(offsets[i % offsets.length]));
     });
     const q = buildDailyQueue({ cards, threshold: THRESHOLD }, NOW, DEFAULT_OPTS);
     const dueItems = q.filter((i) => i.kind === "due") as Extract<QueueItem, { kind: "due" }>[];
@@ -160,13 +154,13 @@ describe("buildDailyQueue — scope of due cards", () => {
     // Seed a locked level's cards as overdue — they must NOT appear.
     const lockedLevel = getBranch("reading-recognition").levels[5]; // position 6, locked when fresh
     const state = freshState();
-    for (const k of getLevelCardKeys(lockedLevel.id)) {
-      cards.set(key(k), answeredCard(-1 * DAY));
+    for (const entityKey of getLevelEntityKeys(lockedLevel.id)) {
+      cards.set(entityKey, answeredCard(-1 * DAY));
     }
     state.cards = cards;
     expect(isLevelUnlocked(state, lockedLevel.id)).toBe(false);
     const q = buildDailyQueue(state, NOW, DEFAULT_OPTS);
-    const lockedKeySet = new Set(getLevelCardKeys(lockedLevel.id).map(key));
+    const lockedKeySet = new Set(getLevelEntityKeys(lockedLevel.id));
     for (const item of q) {
       expect(lockedKeySet.has(item.cardKey)).toBe(false);
     }

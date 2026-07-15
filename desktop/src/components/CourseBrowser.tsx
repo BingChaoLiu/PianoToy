@@ -1,10 +1,9 @@
-// Course browser (T6): the note-reading mode's home base.
+// Course browser (T6, generalized in T8): the note-reading mode's home base.
 //
-// Shows all four branches; only reading-recognition is playable, the other
-// three are coming-soon. Within reading-recognition every level is listed with
-// its derived status (locked/ready/in-progress/mastered) and a daily-queue
-// status indicator. Selecting an unlocked level launches a level-scoped drill;
-// the "daily mix" card plays the full T4 queue across all unlocked levels.
+// Shows all branches — active ones render their levels (each with a derived
+// status: locked/ready/in-progress/mastered); coming-soon ones render a locked
+// placeholder. The "daily mix" card plays the full T4 queue across all
+// unlocked levels of all active branches.
 //
 // Status derivation is pure (course.levelStatus); this component only loads the
 // persisted card state, renders, and routes launches.
@@ -72,7 +71,6 @@ export function CourseBrowser({
   const now = Date.now();
   const queue = buildDailyQueue(state, now, { newCardsPerDay: DEFAULT_NEW_CARDS_PER_DAY });
   const totalCount = queue.length;
-  const readingBranch = BRANCHES.find((b) => b.id === "reading-recognition")!;
 
   return (
     <div className="flex h-full w-full flex-col bg-bg-0 text-fg">
@@ -93,20 +91,22 @@ export function CourseBrowser({
           onStart={onStartDailyMix}
         />
 
-        {/* Reading branch — the playable one */}
-        <BranchSection branch={readingBranch} t={t}>
-          {readingBranch.levels.map((level) => (
-            <LevelRow
-              key={level.id}
-              level={level}
-              status={levelStatus(state, level.id)}
-              t={t}
-              onStart={() => onStartLevel(level.id)}
-            />
-          ))}
-        </BranchSection>
+        {/* Active branches — each renders its levels */}
+        {BRANCHES.filter((b) => b.status === "active").map((branch) => (
+          <BranchSection key={branch.id} branch={branch} t={t}>
+            {branch.levels.map((level) => (
+              <LevelRow
+                key={level.id}
+                level={level}
+                status={levelStatus(state, level.id)}
+                t={t}
+                onStart={() => onStartLevel(level.id)}
+              />
+            ))}
+          </BranchSection>
+        ))}
 
-        {/* The three coming-soon branches */}
+        {/* Coming-soon branches */}
         {BRANCHES.filter((b) => b.status === "coming-soon").map((branch) => (
           <ComingSoonBranch key={branch.id} branch={branch} t={t} />
         ))}

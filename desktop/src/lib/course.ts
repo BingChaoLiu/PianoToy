@@ -1,30 +1,42 @@
 // Course tree + unlock state machine for the note-reading trainer.
 //
 // Pure data + pure functions only: no Date.now, no DOM, no React. Everything
-// here is unit-testable. The card-identity model (CardKey) and the unlock
-// derivation are the contract T2 (persistence), T4 (daily queue), and T5 (UI)
-// build on.
+// here is unit-testable. The card-identity model and the unlock derivation are
+// the contract T2 (persistence), T4 (daily queue), and T5 (UI) build on.
 //
-// Design (decided in T3):
-//   - CardKey = { pitch (MIDI), clef, key } — structured, mirrors existing
-//     vocabulary (reading-staff-renderer uses MIDI; note-reading-generator
-//     uses NoteKey).
+// Design (decided in T3, generalized in T8):
+//   - Engine identity is a STRING (`entityKey`). Each branch owns its catalog
+//     type + an `entityKeyToString` encoder; the SM-2 engine, daily queue, and
+//     session controller work purely on strings and never decode them. The
+//     reading branch's catalog type is `CardKey` (pitch/clef/key); the
+//     key-signature branch's is `NoteKey`. Branch-specific code decodes strings
+//     back to its catalog type when it needs semantic fields (e.g. the reading
+//     stage decodes pitch for rendering).
+//   - Levels hold `entityKeys: string[]` — the pre-computed string keys. This
+//     frees the engine from knowing how to stringify a card: it just iterates
+//     the string array.
 //   - Unlock/mastered state is PURELY DERIVED from the card map. There are no
 //     explicit "unlocked"/"mastered" flags to keep in sync: a level is mastered
-//     iff every card in its set clears the mastery threshold (T1); a level is
-//     playable iff every level gating it is mastered AND its branch is active.
-//   - Levels form a linear chain within a track; cross-branch dependencies are
-//     declared per branch (gatedBy).
+//     iff every entity key in its set clears the mastery threshold (T1); a level
+//     is playable iff every cross-branch gate is satisfied AND its branch is
+//     active.
+//   - Levels form a linear chain within a branch (position 1, 2, ...); the gate
+//     is "the previous level in catalog order is mastered". Cross-branch
+//     dependencies are declared per branch (gatedBy) and use a PARTIAL-PROGRESS
+//     gate: a gating branch needs `gateMasteredLevels` levels mastered (not
+//     necessarily all). For reading this is 6 (treble track cleared).
 
 import type { NoteKey } from "@/lib/note-reading-generator";
 import type { Card, MasteryThreshold } from "@/lib/sm2";
 import { isMastered } from "@/lib/sm2";
 
-// --- Card identity -----------------------------------------------------------
+// --- Reading branch card identity -------------------------------------------
+// The reading branch identifies a recall card by (pitch, clef, key). These are
+// the encoder/decoder for that catalog type — the engine never calls them.
 
 export type Clef = "treble" | "bass";
 
-/** The identity a single recall card tracks. Opaque `id` for the T1 engine. */
+/** The reading branch's catalog identity for a single recall card. */
 export interface CardKey {
   /** MIDI note number, e.g. 60 = middle C. */
   pitch: number;
@@ -42,6 +54,24 @@ export function cardKeyToString(k: CardKey): string {
 export function cardKeyFromString(s: string): CardKey {
   const [pitch, clef, key] = s.split(":");
   return { pitch: Number(pitch), clef: clef as Clef, key: key as NoteKey };
+}
+
+// --- Key-signature branch entity identity -----------------------------------
+
+/** Prefix for key-signature entity keys, e.g. "keysig:G". */
+export const KEYSIG_ENTITY_PREFIX = "keysig:";
+
+/** Deterministic string form of a NoteKey for the key-sig branch. */
+export function keySigEntityKeyToString(k: NoteKey): string {
+  return `${KEYSIG_ENTITY_PREFIX}${k}`;
+}
+
+/** Inverse of keySigEntityKeyToString — returns the NoteKey or null if invalid. */
+export function keySigEntityKeyFromString(s: string): NoteKey | null {
+  if (!s.startsWith(KEYSIG_ENTITY_PREFIX)) return null;
+  const rest = s.slice(KEYSIG_ENTITY_PREFIX.length);
+  if (!VALID_KEYSIG_KEYS.has(rest)) return null;
+  return rest as NoteKey;
 }
 
 // --- Course catalog ----------------------------------------------------------
@@ -63,6 +93,9 @@ export type ReadingLevelKind =
   | "ledger-above"
   | "accidentals";
 
+/** Kind of level for the key-signature branch (by accidental count). */
+export type KeySigLevelKind = "0-accidentals" | "1-accidental" | "2-accidentals" | "3-accidentals";
+
 export interface Level {
   /** Stable unique id, e.g. "reading-treble-line-notes". */
   id: string;
@@ -71,7 +104,7 @@ export interface Level {
   /** Which branch this level belongs to. */
   branch: BranchId;
   /** Which track within the branch (treble/bass for reading). */
-  track: "treble" | "bass";
+  track: string;
   /**
    * 1-based position WITHIN THE BRANCH (global across tracks). The reading
    * branch is a single linear chain: treble line-notes (1) -> ... -> treble
@@ -80,10 +113,10 @@ export interface Level {
    * which encodes the standard treble-first-then-bass pedagogy.
    */
   position: number;
-  /** What kind of cards this level covers (reading branch only for now). */
-  kind: ReadingLevelKind;
-  /** The explicit card-set this level trains. */
-  cards: CardKey[];
+  /** What kind of cards this level covers (branch-specific union). */
+  kind: ReadingLevelKind | KeySigLevelKind | string;
+  /** The pre-computed string entity keys this level trains (the Map keys). */
+  entityKeys: string[];
 }
 
 export interface Branch {
@@ -91,8 +124,18 @@ export interface Branch {
   /** i18n key for the branch name. */
   titleKey: string;
   status: BranchStatus;
-  /** Branches that must be fully mastered before ANY level here is playable. */
+  /**
+   * Branches that must have `gateMasteredLevels` levels mastered before ANY
+   * level here is playable.
+   */
   gatedBy: BranchId[];
+  /**
+   * How many levels of THIS branch must be mastered to satisfy a cross-branch
+   * gate that depends on it. For reading this is 6 (treble track cleared) so
+   * the new branches become reachable without finishing the entire 12-level
+   * reading course.
+   */
+  gateMasteredLevels: number;
   levels: Level[];
 }
 
@@ -136,7 +179,7 @@ function readingLevel(
     track,
     position,
     kind,
-    cards,
+    entityKeys: cards.map(cardKeyToString),
   };
 }
 
@@ -163,12 +206,48 @@ function buildReadingLevels(): Level[] {
   return levels;
 }
 
+// --- Key-signature branch catalog -------------------------------------------
+// 8 keys (C G D A E F Bb Eb), 4 levels by accidental count:
+//   1. 0 accidentals — C alone
+//   2. 1 accidental  — G (F#), F (Bb)
+//   3. 2 accidentals — D (F# C#), Bb (Bb Eb)
+//   4. 3 accidentals — A, E, Eb
+
+/** All 8 key-signature keys in the catalog. */
+export const KEYSIG_KEYS: NoteKey[] = ["C", "G", "D", "A", "E", "F", "Bb", "Eb"];
+
+/** Validated set for keySigEntityKeyFromString (defined after KEYSIG_KEYS). */
+const VALID_KEYSIG_KEYS: ReadonlySet<string> = new Set(KEYSIG_KEYS);
+
+function keySigLevel(position: number, kind: KeySigLevelKind, keys: NoteKey[]): Level {
+  return {
+    id: `keysig-${kind}`,
+    titleKey: `course.key_signature.${kind}`,
+    branch: "key-signature-recognition",
+    track: "keysig",
+    position,
+    kind,
+    entityKeys: keys.map(keySigEntityKeyToString),
+  };
+}
+
+function buildKeySigLevels(): Level[] {
+  return [
+    keySigLevel(1, "0-accidentals", ["C"]),
+    keySigLevel(2, "1-accidental", ["G", "F"]),
+    keySigLevel(3, "2-accidentals", ["D", "Bb"]),
+    keySigLevel(4, "3-accidentals", ["A", "E", "Eb"]),
+  ];
+}
+
 export const BRANCHES: Branch[] = [
   {
     id: "reading-recognition",
     titleKey: "course.branch.reading",
     status: "active",
     gatedBy: [],
+    /** Reading needs 6 levels (treble track) mastered to satisfy a cross-branch gate. */
+    gateMasteredLevels: 6,
     levels: buildReadingLevels(),
   },
   {
@@ -176,6 +255,7 @@ export const BRANCHES: Branch[] = [
     titleKey: "course.branch.keyboard",
     status: "coming-soon",
     gatedBy: ["reading-recognition"],
+    gateMasteredLevels: 0,
     levels: [],
   },
   {
@@ -183,14 +263,16 @@ export const BRANCHES: Branch[] = [
     titleKey: "course.branch.interval",
     status: "coming-soon",
     gatedBy: ["reading-recognition"],
+    gateMasteredLevels: 0,
     levels: [],
   },
   {
     id: "key-signature-recognition",
     titleKey: "course.branch.key-signature",
-    status: "coming-soon",
+    status: "active",
     gatedBy: ["reading-recognition"],
-    levels: [],
+    gateMasteredLevels: 0,
+    levels: buildKeySigLevels(),
   },
 ];
 
@@ -210,9 +292,9 @@ export function getLevel(id: string): Level {
   throw new Error(`unknown level: ${id}`);
 }
 
-/** Card keys for a level (throws if unknown — callers should pass known ids). */
-export function getLevelCardKeys(levelId: string): CardKey[] {
-  return getLevel(levelId).cards;
+/** Entity keys (string form) for a level — the Map/JSON keys the engine uses. */
+export function getLevelEntityKeys(levelId: string): string[] {
+  return getLevel(levelId).entityKeys;
 }
 
 /** Every level in the tree (active + coming-soon), flat. */
@@ -234,30 +316,46 @@ export interface CourseState {
   threshold: MasteryThreshold;
 }
 
-/** True iff every card in the level clears the mastery threshold. */
+/** True iff every entity key in the level clears the mastery threshold. */
 export function isLevelMastered(state: CourseState, levelId: string): boolean {
   const level = getLevel(levelId);
-  if (level.cards.length === 0) return false;
-  for (const key of level.cards) {
-    const card = state.cards.get(cardKeyToString(key));
+  if (level.entityKeys.length === 0) return false;
+  for (const entityKey of level.entityKeys) {
+    const card = state.cards.get(entityKey);
     if (!card || !isMastered(card, state.threshold)) return false;
   }
   return true;
 }
 
-/** True iff every level in the branch is mastered. */
-function isBranchMastered(state: CourseState, branch: Branch): boolean {
-  if (branch.levels.length === 0) return false;
-  return branch.levels.every((l) => isLevelMastered(state, l.id));
+/** How many levels in a single branch are mastered. */
+export function branchMasteredLevelCount(state: CourseState, branchId: BranchId): number {
+  const branch = getBranch(branchId);
+  let n = 0;
+  for (const level of branch.levels) {
+    if (isLevelMastered(state, level.id)) n++;
+  }
+  return n;
+}
+
+/**
+ * A cross-branch gate is satisfied when the gating branch has at least
+ * `gateMasteredLevels` levels mastered. For reading this is 6 (treble track
+ * cleared) — the three new branches unlock together once the learner clears
+ * treble, without finishing the entire 12-level reading course.
+ */
+function isBranchGateSatisfied(state: CourseState, gateBranchId: BranchId): boolean {
+  const gateBranch = getBranch(gateBranchId);
+  const count = branchMasteredLevelCount(state, gateBranchId);
+  return count >= gateBranch.gateMasteredLevels;
 }
 
 /**
  * A level is playable iff:
  *   1. its branch is active (not coming-soon),
- *   2. every cross-branch dependency is fully mastered,
+ *   2. every cross-branch dependency's gate is satisfied (partial progress:
+ *      the gating branch needs `gateMasteredLevels` levels mastered, not all),
  *   3. the previous level in the branch (catalog order) is mastered — or it's
- *      position 1. For the reading branch this is the single linear chain
- *      treble(1-6) -> bass(7-12); position 1 has no gate.
+ *      position 1.
  */
 export function isLevelUnlocked(state: CourseState, levelId: string): boolean {
   const level = getLevel(levelId);
@@ -265,9 +363,9 @@ export function isLevelUnlocked(state: CourseState, levelId: string): boolean {
 
   if (branch.status !== "active") return false;
 
-  // Cross-branch gates: every gating branch must be fully mastered.
+  // Cross-branch gates: each gating branch must have enough levels mastered.
   for (const gateId of branch.gatedBy) {
-    if (!isBranchMastered(state, getBranch(gateId))) return false;
+    if (!isBranchGateSatisfied(state, gateId)) return false;
   }
 
   // Within-branch gate: the previous level in catalog order must be mastered,
@@ -316,8 +414,8 @@ export function levelStatus(state: CourseState, levelId: string): LevelStatus {
   if (isLevelMastered(state, levelId)) return "mastered";
   if (!isLevelUnlocked(state, levelId)) return "locked";
   // Unlocked but not mastered: "in-progress" if the learner has entered any of
-  // this level's cards, otherwise "ready" (not started).
+  // this level's entity keys, otherwise "ready" (not started).
   const level = getLevel(levelId);
-  const started = level.cards.some((k) => state.cards.has(cardKeyToString(k)));
+  const started = level.entityKeys.some((k) => state.cards.has(k));
   return started ? "in-progress" : "ready";
 }

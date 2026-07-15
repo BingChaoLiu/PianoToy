@@ -4,7 +4,7 @@
 // This store is the impure boundary over the pure practice-controller:
 //   - startSession() loads persisted progress (T2), builds a CourseState, and
 //     creates a PracticeSession from the T4 daily queue.
-//   - answerLetter(letter) judges the answer through the controller, then
+//   - answer(value) judges the answer through the controller, then
 //     persists the updated card map via saveProgressDebounced (T2).
 //   - exitSession() flushes any pending save so the snapshot is durable.
 //
@@ -19,8 +19,8 @@ import {
   judgeAnswer,
   currentCardKey,
   levelJustMastered,
-  nameForPitch,
-  cardKeyPitchOf,
+  correctAnswerForEntityKey,
+  pitchFromEntityKey,
   challengeActionFor,
   DEFAULT_NEW_CARDS_PER_DAY,
   DEFAULT_THRESHOLD,
@@ -59,8 +59,8 @@ interface NoteReadingState {
   lastProgressionCue: ProgressionCue | null;
   /** Transient judge flash for the staff note, cleared after a short hold. */
   judge: "none" | "correct" | "wrong" | "slow";
-  /** Pitch of the card being judged (the flash renders THIS note, not the next). */
-  judgePitch: number | null;
+  /** Entity key of the card being judged (the flash renders THIS card, not the next). */
+  judgeEntityKey: string | null;
   /** Practice vs challenge mode (T7). Reuses the existing ScorePracticeMode enum. */
   practiceMode: ScorePracticeMode;
   /** What scope the current session runs: "daily-mix" or a level id. */
@@ -75,7 +75,8 @@ interface NoteReadingState {
   setPracticeMode: (m: ScorePracticeMode) => void;
   /** Switch mode and re-launch the current scope in the new mode (T7). */
   switchPracticeMode: (m: ScorePracticeMode) => Promise<void>;
-  answerLetter: (letter: string) => void;
+  /** Submit an answer value (a letter name for reading, a key name for key-sig). */
+  answer: (value: string) => void;
   /** Apply a timeout outcome (the adaptive timer expired). */
   answerTimeout: () => void;
   /** Clear the judge flash (called by the component after the hold window). */
@@ -134,7 +135,7 @@ function activateSession(
     startTime: performance.now(),
     lastProgressionCue: null,
     judge: "none",
-    judgePitch: null,
+    judgeEntityKey: null,
     runEnded: false,
   });
 }
@@ -149,7 +150,7 @@ export const useNoteReadingStore = create<NoteReadingState>()(
       startTime: null,
       lastProgressionCue: null,
       judge: "none",
-      judgePitch: null,
+      judgeEntityKey: null,
       practiceMode: "practice",
       sessionScope: null,
       runEnded: false,
@@ -182,18 +183,17 @@ export const useNoteReadingStore = create<NoteReadingState>()(
         }
       },
 
-      answerLetter: (letter) => {
+      answer: (value) => {
         const s = get();
         if (!s.session || s.phase !== "active") return;
         if (s.practiceMode === "challenge" && s.runEnded) return; // run over
         const ck = currentCardKey(s.session);
         if (!ck) return;
 
-        const pitch = cardKeyPitchOf(ck);
-        const correct = nameForPitch(pitch);
-        const outcome: Outcome = letter === correct ? "correct" : "wrong";
+        const correct = correctAnswerForEntityKey(ck);
+        const outcome: Outcome = value === correct ? "correct" : "wrong";
         const reactionMs = measuredReaction(s);
-        applyOutcome(s, outcome, set, reactionMs, pitch);
+        applyOutcome(s, outcome, set, reactionMs, ck);
       },
 
       answerTimeout: () => {
@@ -203,10 +203,10 @@ export const useNoteReadingStore = create<NoteReadingState>()(
         const ck = currentCardKey(s.session);
         // Timeout = no real reaction sample, so do NOT feed reactionMs to SM-2
         // (forwarding the full limit would inflate RMA and grow the next deadline).
-        applyOutcome(s, "slow", set, undefined, ck ? cardKeyPitchOf(ck) : null);
+        applyOutcome(s, "slow", set, undefined, ck);
       },
 
-      clearJudge: () => set({ judge: "none", judgePitch: null }),
+      clearJudge: () => set({ judge: "none", judgeEntityKey: null }),
 
       exitSession: async () => {
         // Guarantee the last card-map snapshot is durable before the mode tears down.
@@ -226,7 +226,7 @@ export const useNoteReadingStore = create<NoteReadingState>()(
           startTime: null,
           lastProgressionCue: null,
           judge: "none",
-          judgePitch: null,
+          judgeEntityKey: null,
           sessionScope: null,
           runEnded: false,
         });
@@ -249,20 +249,20 @@ type SetFn = (partial: Partial<NoteReadingState>) => void;
 /**
  * Apply a judged outcome: route through the controller, persist, and surface
  * side effects (judge flash on the JUDGED card, mastery cue, session-complete
- * phase). Centralized so answerLetter and answerTimeout share post-judge
- * handling.
+ * phase). Centralized so answer and answerTimeout share post-judge handling.
  *
  * `reactionMs` is the learner's measured reaction (fed to SM-2 for correct/slow
  * RMA updates); pass undefined when there's no real sample (e.g. a timeout).
- * `judgePitch` is the pitch the flash should tint — the card just answered,
- * which may already be off the queue front by the time the store re-renders.
+ * `judgeEntityKey` is the entity key the flash should tint — the card just
+ * answered, which may already be off the queue front by the time the store
+ * re-renders.
  */
 function applyOutcome(
   s: NoteReadingState,
   outcome: Outcome,
   set: SetFn,
   reactionMs: number | undefined,
-  judgePitch: number | null,
+  judgeEntityKey: string | null,
 ): void {
   if (!s.session) return;
   const ck = currentCardKey(s.session);
@@ -325,7 +325,7 @@ function applyOutcome(
     session: frozen ? s.session : next,
     progress: persistedProgress,
     judge: outcome,
-    judgePitch,
+    judgeEntityKey,
     currentCardAppearAt: next.status === "active" && !frozen ? performance.now() : null,
     phase: frozen ? "active" : next.status === "complete" ? "complete" : "active",
     lastProgressionCue: cue ?? s.lastProgressionCue,
@@ -339,10 +339,22 @@ function measuredReaction(s: NoteReadingState): number {
   return Math.max(0, performance.now() - appearAt);
 }
 
-// --- convenience selector (used by the component) ---------------------------
+// --- convenience selectors (used by the components) --------------------------
 
-export function selectCurrentPitch(s: NoteReadingState): number | null {
+/** The entity key of the current card, or null if the session is complete. */
+export function selectCurrentEntityKey(s: NoteReadingState): string | null {
   if (!s.session) return null;
-  const ck = currentCardKey(s.session);
-  return ck ? cardKeyPitchOf(ck) : null;
+  return currentCardKey(s.session);
+}
+
+/** The pitch of the current reading card, or null (reading branch only). */
+export function selectCurrentPitch(s: NoteReadingState): number | null {
+  const ck = selectCurrentEntityKey(s);
+  if (!ck) return null;
+  return pitchFromEntityKey(ck);
+}
+
+/** The entity key of the card being judged (during a flash), or null. */
+export function selectJudgeEntityKey(s: NoteReadingState): string | null {
+  return s.judge !== "none" ? s.judgeEntityKey : null;
 }

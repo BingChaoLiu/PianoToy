@@ -1,15 +1,22 @@
-// Note-reading mode shell (T6): switches between the course browser (home base)
-// and the practice stage. The browser launches either a daily-mix session or a
-// level-scoped drill; the stage runs it; exiting practice returns to the
-// browser with a bumped reloadKey so statuses refresh from the persisted card
-// state updated during the session.
+// Note-reading mode shell (T6, generalized in T8): switches between the course
+// browser (home base) and the practice stage. The browser launches either a
+// daily-mix session or a level-scoped drill; the stage runs it; exiting
+// practice returns to the browser with a bumped reloadKey so statuses refresh
+// from the persisted card state updated during the session.
+//
+// Branch routing (T8): the session scope (level id) determines which practice
+// stage renders — reading-recognition levels use NoteReadingStage, key-sig
+// levels use KeySignatureStage. Daily-mix renders NoteReadingStage (the daily
+// queue is reading-driven while key-sig is reached via level drills).
 
 import { useState } from "react";
 import { CourseBrowser } from "@/components/CourseBrowser";
 import { NoteReadingStage } from "@/components/NoteReadingStage";
+import { KeySignatureStage } from "@/components/KeySignatureStage";
 import { NoteReadingSummary } from "@/components/NoteReadingSummary";
 import { useNoteReadingStore } from "@/store/useNoteReadingStore";
 import { useInputStore } from "@/store/useInputStore";
+import { getLevel } from "@/lib/course";
 
 type SubView = "browser" | "practice";
 
@@ -36,6 +43,11 @@ export function NoteReadingMode({
     await useNoteReadingStore.getState().startLevelSession(levelId);
     setSubView("practice");
   };
+
+  // --- Branch routing: which stage renders for the current session scope? ---
+  const scope = useNoteReadingStore((s) => s.sessionScope);
+  const isKeySigStage =
+    scope != null && scope !== "daily-mix" && getLevel(scope).branch === "key-signature-recognition";
 
   // --- Exit handlers (practice → browser/home) ---
   const handleStageExit = () => {
@@ -90,11 +102,19 @@ export function NoteReadingMode({
 
   return (
     <div className="relative h-full w-full">
-      <NoteReadingStage
-        onOpenSettings={onOpenSettings}
-        onExit={handleStageExit}
-        onRetry={handleRetry}
-      />
+      {isKeySigStage ? (
+        <KeySignatureStage
+          onOpenSettings={onOpenSettings}
+          onExit={handleStageExit}
+          onRetry={handleRetry}
+        />
+      ) : (
+        <NoteReadingStage
+          onOpenSettings={onOpenSettings}
+          onExit={handleStageExit}
+          onRetry={handleRetry}
+        />
+      )}
       {showSummary && (
         <NoteReadingSummary
           onClose={() => {

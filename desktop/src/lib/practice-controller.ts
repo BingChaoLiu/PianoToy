@@ -22,9 +22,8 @@
 import { buildDailyQueue, backstopExtraCards, type QueueItem } from "@/lib/daily-queue";
 import {
   cardKeyFromString,
-  cardKeyToString,
-  getLevelCardKeys,
-  type CardKey,
+  getLevelEntityKeys,
+  KEYSIG_KEYS,
   type CardMap,
   type CourseState,
 } from "@/lib/course";
@@ -63,6 +62,35 @@ export function letterForPitch(pitch: number): number {
 export function nameForPitch(pitch: number): string {
   return LETTER_NAMES[letterForPitch(pitch)];
 }
+
+// --- Branch-aware answer resolution ------------------------------------------
+// The engine works on string entity keys. Each branch encodes its answer
+// differently: reading cards encode a pitch (the answer is a letter name),
+// key-sig cards encode a NoteKey (the answer IS that key name). This pure
+// function resolves "what is the correct answer string for this entity key"
+// so the store's answer handler doesn't need to branch.
+
+import { keySigEntityKeyFromString } from "@/lib/course";
+
+/**
+ * The correct answer string for the current entity key. For a reading card
+ * ("60:treble:C") this is the letter name ("C"); for a key-sig card
+ * ("keysig:G") this is the key name ("G"). The store compares the learner's
+ * tap against this value.
+ */
+export function correctAnswerForEntityKey(entityKey: string): string {
+  const noteKey = keySigEntityKeyFromString(entityKey);
+  if (noteKey) return noteKey;
+  // Reading card: decode the pitch and return the letter name.
+  return nameForPitch(cardKeyFromString(entityKey).pitch);
+}
+
+/**
+ * The 8 key-signature answer buttons, in catalog order. Derives from the
+ * course catalog's KEYSIG_KEYS so there's a single source of truth for the
+ * key-name set and its ordering.
+ */
+export const KEYSIG_ANSWER_BUTTONS: readonly string[] = KEYSIG_KEYS.map(String);
 
 // --- Session model -----------------------------------------------------------
 
@@ -228,9 +256,9 @@ export function levelJustMastered(
   levelId: string,
   threshold: MasteryThreshold,
 ): boolean {
-  const levelCards = getLevelCardKeys(levelId);
-  const was = isLevelCardSetMastered(prev, levelCards, threshold);
-  const isNow = isLevelCardSetMastered(curr, levelCards, threshold);
+  const entityKeys = getLevelEntityKeys(levelId);
+  const was = isEntitySetMastered(prev, entityKeys, threshold);
+  const isNow = isEntitySetMastered(curr, entityKeys, threshold);
   return !was && isNow;
 }
 
@@ -239,16 +267,27 @@ export function cardKeyPitchOf(cardKey: string): number {
   return cardKeyFromString(cardKey).pitch;
 }
 
+/**
+ * The pitch of a reading entity key, or null if the key belongs to another
+ * branch (e.g. a key-sig card). Centralizes the branch discrimination so
+ * callers don't leak `startsWith("keysig:")` checks.
+ */
+export function pitchFromEntityKey(entityKey: string): number | null {
+  const noteKey = keySigEntityKeyFromString(entityKey);
+  if (noteKey) return null; // key-sig card — no pitch
+  return cardKeyFromString(entityKey).pitch;
+}
+
 // --- internal ----------------------------------------------------------------
 
-function isLevelCardSetMastered(
+function isEntitySetMastered(
   cards: CardMap,
-  levelCards: ReadonlyArray<CardKey>,
+  entityKeys: ReadonlyArray<string>,
   threshold: MasteryThreshold,
 ): boolean {
-  if (levelCards.length === 0) return false;
-  for (const k of levelCards) {
-    const card = cards.get(cardKeyToString(k));
+  if (entityKeys.length === 0) return false;
+  for (const entityKey of entityKeys) {
+    const card = cards.get(entityKey);
     if (!card || !isMastered(card, threshold)) return false;
   }
   return true;
@@ -265,16 +304,15 @@ function isLevelCardSetMastered(
  * A fully mastered level genuinely has nothing left -> stays empty -> complete.
  */
 function buildLevelQueue(state: CourseState, now: number, levelId: string): QueueItem[] {
-  const levelCards = getLevelCardKeys(levelId);
+  const entityKeys = getLevelEntityKeys(levelId);
   const due: Extract<QueueItem, { kind: "due" }>[] = [];
   const fresh: Extract<QueueItem, { kind: "new" }>[] = [];
-  for (const k of levelCards) {
-    const id = cardKeyToString(k);
-    const card = state.cards.get(id);
+  for (const entityKey of entityKeys) {
+    const card = state.cards.get(entityKey);
     if (card) {
-      if (card.due <= now) due.push({ kind: "due", cardKey: id, due: card.due, levelId });
+      if (card.due <= now) due.push({ kind: "due", cardKey: entityKey, due: card.due, levelId });
     } else {
-      fresh.push({ kind: "new", cardKey: id, levelId });
+      fresh.push({ kind: "new", cardKey: entityKey, levelId });
     }
   }
   due.sort((a, b) => a.due - b.due);
@@ -282,7 +320,7 @@ function buildLevelQueue(state: CourseState, now: number, levelId: string): Queu
   if (strict.length > 0) return strict;
 
   // Backstop: entered-but-not-mastered cards in this level (shared helper).
-  return backstopExtraCards(state, levelCards.map((k) => ({ cardKey: cardKeyToString(k), levelId })));
+  return backstopExtraCards(state, entityKeys.map((entityKey) => ({ cardKey: entityKey, levelId })));
 }
 
 /** Construct a PracticeSession from a course state + a pre-built queue. */

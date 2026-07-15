@@ -1,39 +1,39 @@
-// Note Reading stage (T5): reading-recognition practice driven by the SM-2
-// daily queue. For each card the learner sees a note on the staff and taps the
-// matching letter name (C/D/E/F/G/A/B). An adaptive soft timer (RMA × 1.5)
-// reddens as it nears zero; a timeout counts as "slow" (fluency miss, card
-// repeats). Wrong = immediate judge + advance (no retry). Mastering a level
-// fires a progression cue. All decisions live in practice-controller.ts; this
-// component owns only rendering + the rAF countdown.
+// Key-signature recognition stage (T8): the learner sees a staff with a treble
+// clef and its key-signature accidentals drawn, and taps the correct key name
+// from 8 buttons (C G D A E F Bb Eb). Driven by the same SM-2 daily queue +
+// store infrastructure as the reading stage — the only differences are the
+// prompt rendering (a key signature instead of a single note) and the answer
+// panel (key-name buttons instead of letter-name buttons).
+//
+// Shares the adaptive soft timer, challenge-mode HUD, progression cue, and
+// session-complete overlay with NoteReadingStage via the same store. The
+// correct-answer resolution is branch-aware (correctAnswerForEntityKey).
 
 import { useEffect, useRef, useState } from "react";
 import { Settings, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   useNoteReadingStore,
-  selectCurrentPitch,
+  selectCurrentEntityKey,
   selectJudgeEntityKey,
 } from "@/store/useNoteReadingStore";
 import { RhythmGameHUD } from "@/components/RhythmGameHUD";
 import { ReadingChallengeResult } from "@/components/ReadingChallengeResult";
-import { drawReadingStaff } from "@/lib/reading-staff-renderer";
+import { drawKeySignatureStaff } from "@/lib/key-sig-staff-renderer";
 import {
-  LETTER_NAMES,
-  nameForPitch,
+  KEYSIG_ANSWER_BUTTONS,
   timerFrac,
   timeLimitMs as timeLimitFor,
 } from "@/lib/practice-controller";
 import { useT } from "@/lib/i18n";
-import { unlock } from "@/lib/audio-context";
-import { synthNoteOn, synthNoteOff } from "@/lib/synth";
-import { useSettingsStore } from "@/store/useSettingsStore";
-import { pitchFromEntityKey } from "@/lib/practice-controller";
+import { KEY_LABELS, type NoteKey } from "@/lib/note-reading-generator";
+import { keySigEntityKeyFromString } from "@/lib/course";
 
 const JUDGE_HOLD_MS = 260; // how long the judge flash stays before clearing
-const FADE_MS = 280; // note fade-in duration
+const FADE_MS = 280; // key-signature fade-in duration
 const TIMER_TICK_MS = 50; // countdown bar refresh cadence
 
-export function NoteReadingStage({
+export function KeySignatureStage({
   onOpenSettings,
   onExit,
   onRetry,
@@ -57,7 +57,6 @@ export function NoteReadingStage({
   const clearJudge = useNoteReadingStore((s) => s.clearJudge);
   const dismissProgressionCue = useNoteReadingStore((s) => s.dismissProgressionCue);
   const switchPracticeMode = useNoteReadingStore((s) => s.switchPracticeMode);
-  const synthEnabled = useSettingsStore((s) => s.synthEnabled);
 
   const isChallenge = practiceMode === "challenge";
 
@@ -65,9 +64,7 @@ export function NoteReadingStage({
   const [elapsedFrac, setElapsedFrac] = useState(1);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Ensure a session exists on mount. When launched from the course browser the
-  // session is already populated (daily mix or level drill), so this is a
-  // fallback for direct entry only — never clobbers a pre-started session.
+  // Ensure a session exists on mount (fallback for direct entry).
   useEffect(() => {
     if (useNoteReadingStore.getState().session) return;
     void startSession();
@@ -81,14 +78,10 @@ export function NoteReadingStage({
   }, [judge, clearJudge]);
 
   // --- Adaptive soft-timer countdown ---
-  // Drives the reddening bar. When elapsed exceeds the limit, dispatch a slow
-  // outcome exactly once per card. `firedRef` guards re-entry: it resets to
-  // false whenever the front card changes, and latches true after a timeout so
-  // the same card can't time out twice (e.g. during the judge-flash hold).
   const firedRef = useRef(false);
   useEffect(() => {
     if (phase !== "active" || !session) return;
-    firedRef.current = false; // new card -> allow one timeout
+    firedRef.current = false;
     setElapsedFrac(1);
 
     const limit = timeLimitFor(session);
@@ -114,7 +107,7 @@ export function NoteReadingStage({
 
     let raf = 0;
     const dpr = Math.max(1, window.devicePixelRatio || 1);
-    let lastPitch: number | null = null;
+    let lastEntityKey: string | null = null;
     let appearAt = 0;
 
     const resize = () => {
@@ -132,30 +125,29 @@ export function NoteReadingStage({
       const s = useNoteReadingStore.getState();
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
-      // During a judge flash, render the JUDGED card so the tint lands on the
-      // note the learner just answered, not its successor.
+      // During a judge flash, render the JUDGED card.
       const flashing = s.judge !== "none";
       const judgeEntityKey = selectJudgeEntityKey(s);
-      const judgePitch = judgeEntityKey ? pitchFromEntityKey(judgeEntityKey) : null;
-      const pitch = flashing ? judgePitch : selectCurrentPitch(s);
-      if (pitch !== lastPitch) {
-        lastPitch = pitch;
+      const entityKey = flashing ? judgeEntityKey : selectCurrentEntityKey(s);
+      if (entityKey !== lastEntityKey) {
+        lastEntityKey = entityKey;
         appearAt = performance.now();
       }
-      const fade = pitch == null ? 0 : Math.min(1, (performance.now() - appearAt) / FADE_MS);
+      const fade = entityKey == null ? 0 : Math.min(1, (performance.now() - appearAt) / FADE_MS);
+      const noteKey = entityKey ? keySigEntityKeyFromString(entityKey) : null;
       const judgeNow = flashing ? (s.judge === "correct" ? "correct" : "wrong") : "none";
 
       ctx.clearRect(0, 0, w, h);
-      // No piano to reserve space for anymore — bottomReserve 0.
-      drawReadingStaff({
-        ctx,
-        width: w,
-        height: h,
-        key: "C", // the reading branch is entirely C-major for now
-        note: pitch,
-        fade,
-        judge: judgeNow,
-      });
+      if (noteKey) {
+        drawKeySignatureStaff({
+          ctx,
+          width: w,
+          height: h,
+          key: noteKey,
+          fade,
+          judge: judgeNow,
+        });
+      }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -165,35 +157,26 @@ export function NoteReadingStage({
     };
   }, []);
 
-  // --- Letter button handler ---
-  const handleLetter = (letter: string) => {
-    if (phase !== "active" || judge !== "none") return; // ignore taps during a flash
-    const pitch = selectCurrentPitch(useNoteReadingStore.getState());
-    const isCorrect = pitch != null && letter === nameForPitch(pitch);
-    unlock();
-    // Audible confirmation only on a correct answer — playing the note on a
-    // wrong tap would reward the mistake with the right pitch.
-    if (synthEnabled && isCorrect && pitch != null) {
-      synthNoteOn(pitch, 100, true);
-      window.setTimeout(() => synthNoteOff(pitch), 240);
-    }
-    answer(letter);
+  // --- Key-name button handler ---
+  const handleAnswer = (keyName: string) => {
+    if (phase !== "active" || judge !== "none") return;
+    answer(keyName);
   };
 
-  // --- Keyboard shortcuts: A B C D E F G map to the letter buttons ---
+  // --- Keyboard shortcuts: map number keys 1-8 to the 8 key-name buttons ---
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat) return;
-      const k = e.key.toUpperCase();
-      if ((LETTER_NAMES as readonly string[]).includes(k)) {
+      const num = parseInt(e.key, 10);
+      if (num >= 1 && num <= KEYSIG_ANSWER_BUTTONS.length) {
         e.preventDefault();
-        handleLetter(k);
+        handleAnswer(KEYSIG_ANSWER_BUTTONS[num - 1]);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, judge, synthEnabled]);
+  }, [phase, judge]);
 
   const remaining = session?.queue.length ?? 0;
   const correctCount = session?.correctCount ?? 0;
@@ -209,9 +192,7 @@ export function NoteReadingStage({
             <ArrowLeft className="mr-1 h-4 w-4" />
             {t("reading.back")}
           </Button>
-          <span className="text-xs text-muted">{t("reading.mode_label")}</span>
-          {/* Practice | Challenge toggle (T7). Switching re-launches the current
-              scope in the new mode, so it's disabled mid-answer-flash. */}
+          <span className="text-xs text-muted">{t("course.branch_key_signature")}</span>
           <div className="flex items-center rounded-md border border-bg-2 bg-bg-2 p-0.5">
             {(["practice", "challenge"] as const).map((m) => (
               <button
@@ -251,11 +232,8 @@ export function NoteReadingStage({
         <div className="relative flex-1 overflow-hidden">
           <canvas ref={canvasRef} className="block h-full w-full" />
 
-          {/* Challenge HUD (HP / combo / score / progress). The HUD self-gates
-              on the practice flag which the store sets in challenge mode. */}
           {isChallenge && phase === "active" && <RhythmGameHUD />}
 
-          {/* Challenge run-result panel (HP emptied or queue cleared). */}
           {isChallenge && runEnded && onRetry && (
             <ReadingChallengeResult
               onRetry={onRetry}
@@ -263,14 +241,12 @@ export function NoteReadingStage({
             />
           )}
 
-          {/* Loading overlay */}
           {phase === "loading" && (
             <div className="absolute inset-0 flex items-center justify-center">
               <p className="text-sm text-muted">{t("reading.loading")}</p>
             </div>
           )}
 
-          {/* Session complete overlay */}
           {phase === "complete" && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="max-w-sm rounded-xl border border-bg-2 bg-bg-1 px-8 py-6 text-center shadow-lg">
@@ -286,7 +262,6 @@ export function NoteReadingStage({
             </div>
           )}
 
-          {/* Progression cue overlay */}
           {lastProgressionCue && (
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-bg-0/70 backdrop-blur-sm">
               <div className="max-w-xs rounded-xl border border-accent/40 bg-bg-1 px-8 py-6 text-center shadow-xl">
@@ -300,10 +275,9 @@ export function NoteReadingStage({
           )}
         </div>
 
-        {/* Adaptive soft-timer bar + letter buttons */}
+        {/* Adaptive soft-timer bar + key-name buttons */}
         {phase === "active" && (
           <div className="border-t border-bg-2 bg-bg-1 px-4 pb-4 pt-3">
-            {/* Countdown bar: green -> red as it empties. */}
             <div className="mx-auto mb-3 flex max-w-md items-center gap-2">
               <span className="w-16 shrink-0 text-right text-[10px] text-muted">{t("reading.fluency")}</span>
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-bg-3">
@@ -317,22 +291,21 @@ export function NoteReadingStage({
               </div>
             </div>
 
-            <p className="mb-2 text-center text-xs text-muted">{t("reading.prompt_name")}</p>
-            {/* Letter-name button panel */}
-            <div className="mx-auto flex max-w-md justify-center gap-2">
-              {LETTER_NAMES.map((letter) => (
+            <p className="mb-2 text-center text-xs text-muted">{t("reading.prompt_key_signature")}</p>
+            <div className="mx-auto grid max-w-md grid-cols-4 gap-2">
+              {KEYSIG_ANSWER_BUTTONS.map((keyName) => (
                 <button
-                  key={letter}
-                  onClick={() => handleLetter(letter)}
+                  key={keyName}
+                  onClick={() => handleAnswer(keyName)}
                   disabled={judge !== "none"}
                   className={
-                    "h-12 w-12 rounded-lg border text-lg font-semibold transition-colors " +
+                    "h-12 rounded-lg border text-lg font-semibold transition-colors " +
                     (judge === "none"
                       ? "border-bg-3 bg-bg-2 text-fg hover:bg-bg-3 active:bg-bg-3"
                       : "border-bg-3 bg-bg-2 text-muted opacity-60")
                   }
                 >
-                  {letter}
+                  {KEY_LABELS[keyName as NoteKey]}
                 </button>
               ))}
             </div>
@@ -343,11 +316,9 @@ export function NoteReadingStage({
   );
 }
 
-// --- helpers -----------------------------------------------------------------
-
 /** Countdown bar color: green near full -> amber -> red near empty. */
 function barColor(frac: number): string {
-  if (frac > 0.5) return "#22c55e"; // green-500
-  if (frac > 0.25) return "#f59e0b"; // amber-500
-  return "#ef4444"; // red-500
+  if (frac > 0.5) return "#22c55e";
+  if (frac > 0.25) return "#f59e0b";
+  return "#ef4444";
 }
