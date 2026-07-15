@@ -261,6 +261,8 @@ export interface Translation {
     prompt_name: string;
     /** "What key signature is this?" prompt above the key-name buttons (key-sig branch). */
     prompt_key_signature: string;
+    /** "What interval is this?" prompt above the interval buttons (interval branch). */
+    prompt_interval: string;
     /** "Slow" outcome label (timeout). */
     slow: string;
     /** Daily review queue finished — nothing left to practice today. */
@@ -316,6 +318,8 @@ export interface Translation {
     };
     /** Key-signature level titles keyed by accidental count: course.key_signature.<kind>. */
     key_signature: Record<string, string>;
+    /** Interval level titles keyed by size range: course.interval.<kind>. */
+    interval: Record<string, string>;
   };
   updater: {
     new_version: string;

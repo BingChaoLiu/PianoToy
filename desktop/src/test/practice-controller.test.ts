@@ -18,6 +18,7 @@ import {
   correctAnswerForEntityKey,
   pitchFromEntityKey,
   KEYSIG_ANSWER_BUTTONS,
+  INTERVAL_ANSWER_BUTTONS,
   levelJustMastered,
   challengeActionFor,
   DEFAULT_NEW_CARDS_PER_DAY,
@@ -511,10 +512,33 @@ describe("pitchFromEntityKey", () => {
     expect(pitchFromEntityKey("keysig:G")).toBeNull();
     expect(pitchFromEntityKey("keysig:Bb")).toBeNull();
   });
+
+  it("returns null for interval entity keys (no single pitch)", () => {
+    expect(pitchFromEntityKey("interval:3")).toBeNull();
+    expect(pitchFromEntityKey("interval:8")).toBeNull();
+  });
 });
 
 describe("KEYSIG_ANSWER_BUTTONS", () => {
   it("has exactly 8 buttons for the 8 key signatures", () => {
     expect(KEYSIG_ANSWER_BUTTONS).toEqual(["C", "G", "D", "A", "E", "F", "Bb", "Eb"]);
+  });
+});
+
+describe("correctAnswerForEntityKey — interval cards (T9)", () => {
+  it("resolves interval cards to their ordinal name", () => {
+    expect(correctAnswerForEntityKey("interval:2")).toBe("2nd");
+    expect(correctAnswerForEntityKey("interval:3")).toBe("3rd");
+    expect(correctAnswerForEntityKey("interval:4")).toBe("4th");
+    expect(correctAnswerForEntityKey("interval:5")).toBe("5th");
+    expect(correctAnswerForEntityKey("interval:6")).toBe("6th");
+    expect(correctAnswerForEntityKey("interval:7")).toBe("7th");
+    expect(correctAnswerForEntityKey("interval:8")).toBe("8ve");
+  });
+});
+
+describe("INTERVAL_ANSWER_BUTTONS", () => {
+  it("has exactly 7 buttons for the 7 interval sizes", () => {
+    expect(INTERVAL_ANSWER_BUTTONS).toEqual(["2nd", "3rd", "4th", "5th", "6th", "7th", "8ve"]);
   });
 });

@@ -96,6 +96,13 @@ export type ReadingLevelKind =
 /** Kind of level for the key-signature branch (by accidental count). */
 export type KeySigLevelKind = "0-accidentals" | "1-accidental" | "2-accidentals" | "3-accidentals";
 
+/** Kind of level for the interval-recognition branch (by size range). */
+export type IntervalLevelKind =
+  | "seconds-thirds"
+  | "fourths-fifths"
+  | "sixths-sevenths"
+  | "all-intervals";
+
 export interface Level {
   /** Stable unique id, e.g. "reading-treble-line-notes". */
   id: string;
@@ -114,7 +121,7 @@ export interface Level {
    */
   position: number;
   /** What kind of cards this level covers (branch-specific union). */
-  kind: ReadingLevelKind | KeySigLevelKind | string;
+  kind: ReadingLevelKind | KeySigLevelKind | IntervalLevelKind | string;
   /** The pre-computed string entity keys this level trains (the Map keys). */
   entityKeys: string[];
 }
@@ -240,6 +247,41 @@ function buildKeySigLevels(): Level[] {
   ];
 }
 
+// --- Interval-recognition branch catalog ------------------------------------
+// 7 interval sizes (2nd–8ve), 4 levels by ascending size range:
+//   1. seconds-thirds   — 2nd, 3rd (small consonant)
+//   2. fourths-fifths   — 4th, 5th (perfect intervals)
+//   3. sixths-sevenths  — 6th, 7th (wider intervals)
+//   4. all-intervals     — 2nd..8ve (comprehensive review)
+// Cards are keyed by interval SIZE (the abstract category), not by a fixed
+// pitch pair — each prompt generates a fresh random instance of that size.
+
+import {
+  intervalEntityKeyToString,
+  type IntervalSize,
+} from "@/lib/interval-generator";
+
+function intervalLevel(position: number, kind: IntervalLevelKind, sizes: IntervalSize[]): Level {
+  return {
+    id: `interval-${kind}`,
+    titleKey: `course.interval.${kind}`,
+    branch: "interval-recognition",
+    track: "interval",
+    position,
+    kind,
+    entityKeys: sizes.map(intervalEntityKeyToString),
+  };
+}
+
+function buildIntervalLevels(): Level[] {
+  return [
+    intervalLevel(1, "seconds-thirds", [2, 3]),
+    intervalLevel(2, "fourths-fifths", [4, 5]),
+    intervalLevel(3, "sixths-sevenths", [6, 7]),
+    intervalLevel(4, "all-intervals", [2, 3, 4, 5, 6, 7, 8]),
+  ];
+}
+
 export const BRANCHES: Branch[] = [
   {
     id: "reading-recognition",
@@ -261,10 +303,10 @@ export const BRANCHES: Branch[] = [
   {
     id: "interval-recognition",
     titleKey: "course.branch.interval",
-    status: "coming-soon",
+    status: "active",
     gatedBy: ["reading-recognition"],
     gateMasteredLevels: 0,
-    levels: [],
+    levels: buildIntervalLevels(),
   },
   {
     id: "key-signature-recognition",

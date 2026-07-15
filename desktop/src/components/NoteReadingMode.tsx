@@ -4,15 +4,17 @@
 // practice returns to the browser with a bumped reloadKey so statuses refresh
 // from the persisted card state updated during the session.
 //
-// Branch routing (T8): the session scope (level id) determines which practice
+// Branch routing (T8/T9): the session scope (level id) determines which practice
 // stage renders — reading-recognition levels use NoteReadingStage, key-sig
-// levels use KeySignatureStage. Daily-mix renders NoteReadingStage (the daily
-// queue is reading-driven while key-sig is reached via level drills).
+// levels use KeySignatureStage, interval levels use IntervalStage. Daily-mix
+// renders NoteReadingStage (the daily queue is reading-driven while the new
+// branches are reached via level drills).
 
 import { useState } from "react";
 import { CourseBrowser } from "@/components/CourseBrowser";
 import { NoteReadingStage } from "@/components/NoteReadingStage";
 import { KeySignatureStage } from "@/components/KeySignatureStage";
+import { IntervalStage } from "@/components/IntervalStage";
 import { NoteReadingSummary } from "@/components/NoteReadingSummary";
 import { useNoteReadingStore } from "@/store/useNoteReadingStore";
 import { useInputStore } from "@/store/useInputStore";
@@ -46,8 +48,10 @@ export function NoteReadingMode({
 
   // --- Branch routing: which stage renders for the current session scope? ---
   const scope = useNoteReadingStore((s) => s.sessionScope);
-  const isKeySigStage =
-    scope != null && scope !== "daily-mix" && getLevel(scope).branch === "key-signature-recognition";
+  const branchForScope =
+    scope != null && scope !== "daily-mix" ? getLevel(scope).branch : null;
+  const isKeySigStage = branchForScope === "key-signature-recognition";
+  const isIntervalStage = branchForScope === "interval-recognition";
 
   // --- Exit handlers (practice → browser/home) ---
   const handleStageExit = () => {
@@ -104,6 +108,12 @@ export function NoteReadingMode({
     <div className="relative h-full w-full">
       {isKeySigStage ? (
         <KeySignatureStage
+          onOpenSettings={onOpenSettings}
+          onExit={handleStageExit}
+          onRetry={handleRetry}
+        />
+      ) : isIntervalStage ? (
+        <IntervalStage
           onOpenSettings={onOpenSettings}
           onExit={handleStageExit}
           onRetry={handleRetry}

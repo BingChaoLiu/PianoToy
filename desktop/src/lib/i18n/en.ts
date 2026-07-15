@@ -247,6 +247,7 @@ const lang: Translation = {
     loading: "Loading today\u2019s practice\u2026",
     prompt_name: "What note is this?",
     prompt_key_signature: "What key signature is this?",
+    prompt_interval: "What interval is this?",
     slow: "Slow",
     complete: "All caught up! Come back tomorrow.",
     remaining: "Remaining",
@@ -295,6 +296,12 @@ const lang: Translation = {
       "1-accidental": "Key Signatures \u2014 1 Accidental",
       "2-accidentals": "Key Signatures \u2014 2 Accidentals",
       "3-accidentals": "Key Signatures \u2014 3 Accidentals",
+    },
+    interval: {
+      "seconds-thirds": "Intervals \u2014 2nds & 3rds",
+      "fourths-fifths": "Intervals \u2014 4ths & 5ths",
+      "sixths-sevenths": "Intervals \u2014 6ths & 7ths",
+      "all-intervals": "Intervals \u2014 All Sizes",
     },
   },
   updater: {

@@ -247,6 +247,7 @@ const lang: Translation = {
     loading: "\u6b63\u5728\u52a0\u8f7d\u4eca\u65e5\u7ec3\u4e60\u2026",
     prompt_name: "\u8fd9\u662f\u4ec0\u4e48\u97f3\uff1f",
     prompt_key_signature: "\u8fd9\u662f\u4ec0\u4e48\u8c03\u53f7\uff1f",
+    prompt_interval: "\u8fd9\u662f\u4ec0\u4e48\u97f3\u7a0b\uff1f",
     slow: "\u592a\u6162",
     complete: "\u4eca\u65e5\u7ec3\u4e60\u5df2\u5b8c\u6210\uff01\u660e\u5929\u518d\u6765\u5427\u3002",
     remaining: "\u5269\u4f59",
@@ -295,6 +296,12 @@ const lang: Translation = {
       "1-accidental": "\u8c03\u53f7 \u2014 1 \u4e2a\u5347\u964d\u53f7",
       "2-accidentals": "\u8c03\u53f7 \u2014 2 \u4e2a\u5347\u964d\u53f7",
       "3-accidentals": "\u8c03\u53f7 \u2014 3 \u4e2a\u5347\u964d\u53f7",
+    },
+    interval: {
+      "seconds-thirds": "\u97f3\u7a0b \u2014 \u4e8c\u5ea6\u4e0e\u4e09\u5ea6",
+      "fourths-fifths": "\u97f3\u7a0b \u2014 \u56db\u5ea6\u4e0e\u4e94\u5ea6",
+      "sixths-sevenths": "\u97f3\u7a0b \u2014 \u516d\u5ea6\u4e0e\u4e03\u5ea6",
+      "all-intervals": "\u97f3\u7a0b \u2014 \u5168\u90e8\u97f3\u7a0b",
     },
   },
   updater: {

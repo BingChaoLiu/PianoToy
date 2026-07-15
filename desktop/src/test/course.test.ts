@@ -73,11 +73,11 @@ describe("course catalog — branches", () => {
     ]);
   });
 
-  it("reading-recognition and key-signature-recognition are active; keyboard-location and interval-recognition are coming-soon", () => {
+  it("reading, key-signature, and interval branches are active; keyboard-location is coming-soon", () => {
     expect(BRANCHES.map((b) => b.status)).toEqual([
       "active",
       "coming-soon",
-      "coming-soon",
+      "active",
       "active",
     ]);
   });
@@ -241,14 +241,12 @@ describe("isLevelUnlocked", () => {
     expect(isLevelUnlocked(state, branch.levels[1].id)).toBe(false);
   });
 
-  it("keyboard-location and interval-recognition levels stay locked (coming-soon branches)", () => {
+  it("keyboard-location levels stay locked (coming-soon branch)", () => {
     const state: CourseState = { cards: new Map(), threshold: { ease: 2.5, intervalDays: 8 } };
-    for (const id of ["keyboard-location", "interval-recognition"] as BranchId[]) {
-      const b = getBranch(id);
-      // coming-soon branches have no playable levels; any level (if any) is locked.
-      for (const level of b.levels) {
-        expect(isLevelUnlocked(state, level.id)).toBe(false);
-      }
+    const b = getBranch("keyboard-location");
+    // coming-soon branch: any level (if any) is locked.
+    for (const level of b.levels) {
+      expect(isLevelUnlocked(state, level.id)).toBe(false);
     }
   });
 });
@@ -380,6 +378,23 @@ describe("cross-branch gating — partial-progress gate (T8)", () => {
       expect(isLevelUnlocked(sixMastered, keysig.levels[i].id)).toBe(false);
     }
   });
+
+  it("interval levels are locked when fewer than 6 reading levels are mastered", () => {
+    const fiveMastered = stateMasteringFirstNLevels("reading-recognition", 5);
+    const interval = getBranch("interval-recognition");
+    for (const level of interval.levels) {
+      expect(isLevelUnlocked(fiveMastered, level.id)).toBe(false);
+    }
+  });
+
+  it("interval level 1 unlocks when exactly 6 reading levels are mastered", () => {
+    const sixMastered = stateMasteringFirstNLevels("reading-recognition", 6);
+    const interval = getBranch("interval-recognition");
+    expect(isLevelUnlocked(sixMastered, interval.levels[0].id)).toBe(true);
+    for (let i = 1; i < interval.levels.length; i++) {
+      expect(isLevelUnlocked(sixMastered, interval.levels[i].id)).toBe(false);
+    }
+  });
 });
 
 describe("key-signature-recognition branch catalog (T8)", () => {
@@ -418,5 +433,47 @@ describe("key-signature-recognition branch catalog (T8)", () => {
   it("all 8 keys are represented across the 4 levels", () => {
     const all = new Set(branch.levels.flatMap((l) => l.entityKeys));
     expect(all.size).toBe(8);
+  });
+});
+
+describe("interval-recognition branch catalog (T9)", () => {
+  const branch = getBranch("interval-recognition");
+
+  it("is an active branch", () => {
+    expect(branch.status).toBe("active");
+  });
+
+  it("has exactly 4 levels progressing by size range", () => {
+    expect(branch.levels.map((l) => l.kind)).toEqual([
+      "seconds-thirds",
+      "fourths-fifths",
+      "sixths-sevenths",
+      "all-intervals",
+    ]);
+    expect(branch.levels.map((l) => l.position)).toEqual([1, 2, 3, 4]);
+  });
+
+  it("level 1 has 2nd and 3rd", () => {
+    expect(branch.levels[0].entityKeys).toEqual(["interval:2", "interval:3"]);
+  });
+
+  it("level 2 has 4th and 5th", () => {
+    expect(branch.levels[1].entityKeys).toEqual(["interval:4", "interval:5"]);
+  });
+
+  it("level 3 has 6th and 7th", () => {
+    expect(branch.levels[2].entityKeys).toEqual(["interval:6", "interval:7"]);
+  });
+
+  it("level 4 has all 7 sizes (2nd through 8ve)", () => {
+    expect(branch.levels[3].entityKeys).toEqual([
+      "interval:2", "interval:3", "interval:4", "interval:5",
+      "interval:6", "interval:7", "interval:8",
+    ]);
+  });
+
+  it("all 7 interval sizes are represented across the levels", () => {
+    const all = new Set(branch.levels.flatMap((l) => l.entityKeys));
+    expect(all.size).toBe(7);
   });
 });

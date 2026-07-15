@@ -71,16 +71,20 @@ export function nameForPitch(pitch: number): string {
 // so the store's answer handler doesn't need to branch.
 
 import { keySigEntityKeyFromString } from "@/lib/course";
+import { intervalEntityKeyFromString, intervalSizeToString, INTERVAL_SIZES } from "@/lib/interval-generator";
 
 /**
  * The correct answer string for the current entity key. For a reading card
  * ("60:treble:C") this is the letter name ("C"); for a key-sig card
- * ("keysig:G") this is the key name ("G"). The store compares the learner's
- * tap against this value.
+ * ("keysig:G") this is the key name ("G"); for an interval card ("interval:3")
+ * this is the ordinal name ("3rd"). The store compares the learner's tap
+ * against this value.
  */
 export function correctAnswerForEntityKey(entityKey: string): string {
   const noteKey = keySigEntityKeyFromString(entityKey);
   if (noteKey) return noteKey;
+  const intervalSize = intervalEntityKeyFromString(entityKey);
+  if (intervalSize) return intervalSizeToString(intervalSize);
   // Reading card: decode the pitch and return the letter name.
   return nameForPitch(cardKeyFromString(entityKey).pitch);
 }
@@ -91,6 +95,12 @@ export function correctAnswerForEntityKey(entityKey: string): string {
  * key-name set and its ordering.
  */
 export const KEYSIG_ANSWER_BUTTONS: readonly string[] = KEYSIG_KEYS.map(String);
+
+/**
+ * The 7 interval answer buttons ("2nd".."8ve"), in ascending size order.
+ * Derives from INTERVAL_SIZES so there's a single source of truth.
+ */
+export const INTERVAL_ANSWER_BUTTONS: readonly string[] = INTERVAL_SIZES.map(intervalSizeToString);
 
 // --- Session model -----------------------------------------------------------
 
@@ -269,12 +279,14 @@ export function cardKeyPitchOf(cardKey: string): number {
 
 /**
  * The pitch of a reading entity key, or null if the key belongs to another
- * branch (e.g. a key-sig card). Centralizes the branch discrimination so
- * callers don't leak `startsWith("keysig:")` checks.
+ * branch (e.g. a key-sig card or interval card). Centralizes the branch
+ * discrimination so callers don't leak `startsWith(...)` checks.
  */
 export function pitchFromEntityKey(entityKey: string): number | null {
   const noteKey = keySigEntityKeyFromString(entityKey);
   if (noteKey) return null; // key-sig card — no pitch
+  const intervalSize = intervalEntityKeyFromString(entityKey);
+  if (intervalSize) return null; // interval card — no single pitch
   return cardKeyFromString(entityKey).pitch;
 }
 
